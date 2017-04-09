@@ -25,11 +25,11 @@ zstyle ':vcs_info:*' actionformats '[%b|%a]' #rebase 途中,merge コンフリ�
 precmd () { vcs_info }
 
 # プロンプト（左）
-PROMPT='%{$fg[red]%}[%n@%m]%{$reset_color%}'
-PROMPT=$PROMPT'${vcs_info_msg_0_} %{${fg[red]}%}%}$%{${reset_color}%} '
+PROMPT='%{$fg[cyan]%}[%n@%m]%{$reset_color%}'
+PROMPT=$PROMPT'${vcs_info_msg_0_} %{${fg[cyan]}%}%}%%%{${reset_color}%} '
 
 # プロンプト（右）
-RPROMPT='%{${fg[red]}%}[%~]%{${reset_color}%}'
+RPROMPT='%{${fg[cyan]}%}[%~]%{${reset_color}%}'
 
 
 
