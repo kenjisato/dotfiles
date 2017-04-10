@@ -1,4 +1,8 @@
 
+# Completion
+autoload -U compinit
+compinit
+
 
 # Git ----
 #  http://www.sirochro.com/note/terminal-zsh-prompt-customize/
