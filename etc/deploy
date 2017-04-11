@@ -1,0 +1,23 @@
+DOT_DIRECTORY=~/dotfiles
+CANDIDATES=(".??*" "bin")
+EXCLUSION=(".git")
+
+is_excluded () {
+  for exclusion in ${EXCLUSION[@]}
+  do
+    [[ "$1" == "$exclusion" ]] && return 0
+  done
+  return 1
+}
+
+cd ${DOT_DIRECTORY}
+
+for f in ${CANDIDATES[@]}
+do
+  if is_excluded "$f"
+  then
+    continue
+  fi
+  ln -snfv ${DOT_DIRECTORY}/${f} ${HOME}/${f}
+done
+echo $(tput setaf 2)Deploy dotfiles complete!. ✔︎$(tput sgr0)

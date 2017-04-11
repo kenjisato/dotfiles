@@ -36,7 +36,7 @@ PROMPT=$PROMPT'${vcs_info_msg_0_} %{${fg[cyan]}%}%}%%%{${reset_color}%} '
 RPROMPT='%{${fg[cyan]}%}[%~]%{${reset_color}%}'
 
 
-
+export PATH=$PATH:~/bin
 export PATH=/Users/kenjisato/anaconda3/bin:$PATH
-export PATH=/Applications/RStudio.app/Contents/MacOS/pandoc:$PATH
 export PATH=~/cling/bin:$PATH
+export PATH=/Applications/RStudio.app/Contents/MacOS/pandoc:$PATH
