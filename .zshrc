@@ -37,6 +37,5 @@ RPROMPT='%{${fg[cyan]}%}[%~]%{${reset_color}%}'
 
 
 export PATH=$PATH:~/bin
-export PATH=/Users/kenjisato/anaconda3/bin:$PATH
 export PATH=~/cling/bin:$PATH
 export PATH=/Applications/RStudio.app/Contents/MacOS/pandoc:$PATH
