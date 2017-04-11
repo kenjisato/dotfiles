@@ -39,3 +39,9 @@ RPROMPT='%{${fg[cyan]}%}[%~]%{${reset_color}%}'
 export PATH=$PATH:~/bin
 export PATH=~/cling/bin:$PATH
 export PATH=/Applications/RStudio.app/Contents/MacOS/pandoc:$PATH
+
+
+
+if [ -e /usr/local/share/zsh-completions ]; then
+    fpath=(/usr/local/share/zsh-completions $fpath)
+fi
