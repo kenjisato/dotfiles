@@ -1,0 +1,4 @@
+docker run -d -p 8888:8888 --name ds \
+  -v ~/Dropbox/Jupyter:/home/jovyan/work \
+  jupyter/datascience-notebook \
+  start-notebook.sh --NotebookApp.token=''
