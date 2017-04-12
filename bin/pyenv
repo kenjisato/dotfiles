@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+echo $VENVROOT/"$1"/bin/activate

@@ -45,3 +45,6 @@ export PATH=/Applications/RStudio.app/Contents/MacOS/pandoc:$PATH
 if [ -e /usr/local/share/zsh-completions ]; then
     fpath=(/usr/local/share/zsh-completions $fpath)
 fi
+
+
+export VENVROOT=~/.envs
