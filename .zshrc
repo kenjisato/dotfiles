@@ -48,3 +48,7 @@ fi
 
 
 export VENVROOT=~/.envs
+
+
+
+alias R='R --no-save'
