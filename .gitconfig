@@ -1,8 +1,8 @@
 [core]
-	excludesfile = /Users/kenjisato/.gitignore_global
+	excludesfile = ~/.gitignore_global
 [difftool "sourcetree"]
 	cmd = opendiff \"$LOCAL\" \"$REMOTE\"
-	path = 
+	path =
 [mergetool "sourcetree"]
 	cmd = /Applications/SourceTree.app/Contents/Resources/opendiff-w.sh \"$LOCAL\" \"$REMOTE\" -ancestor \"$BASE\" -merge \"$MERGED\"
 	trustExitCode = true
@@ -10,4 +10,7 @@
 	name = Kenji Sato
 	email = mail@kenjisato.jp
 [commit]
-	template = /Users/kenjisato/.stCommitMsg
+	template = ~/.stCommitMsg
+[ghq]
+	root = ~/local/ghq
+	root = ~/local/go/src

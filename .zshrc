@@ -1,54 +1,15 @@
-
-# Completion
-autoload -U compinit
-compinit
-
-
-# Git ----
-#  http://www.sirochro.com/note/terminal-zsh-prompt-customize/
-# VCSの情報を取得するzsh関数
-autoload -Uz vcs_info
-autoload -Uz colors # black red green yellow blue magenta cyan white
-colors
-
-# PROMPT変数内で変数参照
-setopt prompt_subst
-
-zstyle ':vcs_info:git:*' check-for-changes true #formats 設定項目で %c,%u が使用可
-zstyle ':vcs_info:git:*' stagedstr "%F{green}!" #commit されていないファイルがある
-zstyle ':vcs_info:git:*' unstagedstr "%F{magenta}+" #add されていないファイルがある
-zstyle ':vcs_info:*' formats "%F{cyan}%c%u(%b)%f" #通常
-zstyle ':vcs_info:*' actionformats '[%b|%a]' #rebase 途中,merge コンフリクト等 formats 外の表示
-
-# %b ブランチ情報
-# %a アクション名(mergeなど)
-# %c changes
-# %u uncommit
-
-# プロンプト表示直前に vcs_info 呼び出し
-precmd () { vcs_info }
-
-# プロンプト（左）
-PROMPT='%{$fg[cyan]%}[%n@%m]%{$reset_color%}'
-PROMPT=$PROMPT'${vcs_info_msg_0_} %{${fg[cyan]}%}%}%%%{${reset_color}%} '
-
-# プロンプト（右）
-RPROMPT='%{${fg[cyan]}%}[%~]%{${reset_color}%}'
+for f in ~/.zsh/[0-9]*.(sh|zsh); do
+    source "$f"
+done
 
 
-export PATH=$PATH:~/bin
-export PATH=~/cling/bin:$PATH
-export PATH=/Applications/RStudio.app/Contents/MacOS/pandoc:$PATH
-
-
-
-if [ -e /usr/local/share/zsh-completions ]; then
-    fpath=(/usr/local/share/zsh-completions $fpath)
-fi
-
-
-export VENVROOT=~/.envs
-
-
-
-alias R='R --no-save'
+function peco-src () {
+    local selected_dir=$(ghq list --full-path | peco --query "$LBUFFER")
+    if [ -n "$selected_dir" ]; then
+        BUFFER="cd ${selected_dir}"
+        zle accept-line
+    fi
+    zle clear-screen
+}
+zle -N peco-src
+bindkey '^]' peco-src
