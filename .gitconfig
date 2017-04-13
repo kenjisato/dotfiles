@@ -12,5 +12,4 @@
 [commit]
 	template = ~/.stCommitMsg
 [ghq]
-	root = ~/local/ghq
-	root = ~/local/go/src
+	root = ~/local/src

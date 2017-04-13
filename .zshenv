@@ -40,7 +40,7 @@ export GIT_EDITOR="${EDITOR}"
 export PATH=~/bin:"$PATH"
 
 # Settings for golang
-export GOPATH="$HOME/local/go"
+export GOPATH="$HOME/local"
 export GOBIN="$GOPATH/bin"
 export PATH="$GOBIN:$PATH"
 
