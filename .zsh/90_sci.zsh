@@ -11,3 +11,9 @@ export VENVROOT=~/.envs
 ## Never save R workspace.
 
 alias R='R --no-save'
+
+
+
+# pandoc -----------------------------------------------------------
+
+PATH=/Applications/RStudio.app/Contents/MacOS/pandoc:$PATH
