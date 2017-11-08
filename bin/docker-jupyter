@@ -3,3 +3,6 @@ docker run --rm -d -p 8888:8888 \
   jupyter/datascience-notebook \
   start-notebook.sh \
   --NotebookApp.password='sha1:67af7f326a19:3041574fcdae6ff0ee5b596c0dae839a5260a0ae'
+
+sleep 3s
+open "http://localhost:8888"
