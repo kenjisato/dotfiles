@@ -8,7 +8,7 @@
 	trustExitCode = true
 [user]
 	name = Kenji Sato
-	email = mail@kenjisato.jp
+	email = kenji@kenjisato.jp
 [commit]
 	template = ~/.stCommitMsg
 [ghq]
