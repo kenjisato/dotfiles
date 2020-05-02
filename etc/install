@@ -60,10 +60,7 @@ deploy() {
 }
 
 initialize() {
-  # . ${DOT_DIRECTORY}/etc/initialize
-  echo "Not fully implemented yet."
   echo "Execute: chsh -s /bin/zsh"
-
   [ ${SHELL} != "/bin/zsh"  ] && chsh -s /bin/zsh
   echo "$(tput setaf 2)Initialize complete!. ✔︎$(tput sgr0)"
 }
