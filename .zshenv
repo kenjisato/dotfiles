@@ -59,5 +59,3 @@ if [[ $UID == 0 ]]; then
 fi
 
 [[ -f ~/.secret ]] && source ~/.secret
-
-
