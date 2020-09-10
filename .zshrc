@@ -2,28 +2,21 @@ for f in ~/.zsh/[0-9]*.(sh|zsh); do
     source "$f"
 done
 
+export PYENV_ROOT=/usr/local/var/pyenv
+if which pyenv > /dev/null; then eval "$(pyenv init -)"; fi
 
-function peco-src () {
-    local selected_dir=$(ghq list --full-path | peco --query "$LBUFFER")
-    if [ -n "$selected_dir" ]; then
-        BUFFER="cd ${selected_dir}"
-        zle accept-line
-    fi
-    zle clear-screen
-}
-zle -N peco-src
-bindkey '^]' peco-src
 
-function peco-rstudio () {
-    local selected_dir=$(ghq list --full-path | peco --query "$LBUFFER")
-    if [ -n "$selected_dir" ]; then
-      files=("$selected_dir"/*.Rproj)
-      if [ -n "$files"]; then
-          BUFFER="cd ${selected_dir} && open -a RStudio ${files[0]}"
-          zle accept-line
-      fi
+# >>> conda initialize >>>
+# !! Contents within this block are managed by 'conda init' !!
+__conda_setup="$('/usr/local/anaconda3/bin/conda' 'shell.zsh' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "/usr/local/anaconda3/etc/profile.d/conda.sh" ]; then
+        . "/usr/local/anaconda3/etc/profile.d/conda.sh"
+    else
+        export PATH="/usr/local/anaconda3/bin:$PATH"
     fi
-    zle clear-screen
-}
-zle -N peco-rstudio
-bindkey "^[" peco-rstudio
+fi
+unset __conda_setup
+# <<< conda initialize <<<

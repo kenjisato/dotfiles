@@ -4,13 +4,14 @@
 ## Populate Python virtual environments here.
 
 export VENVROOT=~/.envs
+export PATH="/usr/local/anaconda3/bin:$PATH"
 
 
 # R -----------------------------------------------------------
 
 ## Never save R workspace.
 
-alias R='R --no-save'
+alias rns='R --no-save'
 
 
 

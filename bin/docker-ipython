@@ -1,4 +1,0 @@
-docker run --rm -it \
-  -v ~/Dropbox/Jupyter:/home/jovyan \
-  jupyter/datascience-notebook \
-  start.sh ipython
