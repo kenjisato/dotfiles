@@ -39,11 +39,19 @@ export GIT_EDITOR="${EDITOR}"
 # Add ~/bin to PATH
 export PATH=~/bin:"$PATH"
 
+# Settings for golang
+export GOPATH="$HOME/local"
+export GOBIN="$GOPATH/bin"
+export PATH="$GOBIN:$PATH"
+
+[[ -f ~/.zprofile ]] && source ~/.zprofile
+
 # History file and its size
 export HISTFILE=~/.zsh_history
 export HISTSIZE=1000000
 export SAVEHIST=1000000
 export LISTMAX=50
+
 # Do not add in root
 if [[ $UID == 0 ]]; then
     unset HISTFILE

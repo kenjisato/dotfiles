@@ -3,13 +3,7 @@
 [ -z "$PS1" ] && return
 [ -n "$VIMRUNTIME" ] && return
 
-if [ -z "$DOTPATH" ]; then
-    echo "cannot start $SHELL, \$DOTPATH not set" 1>&2
-    return 1
-fi
-
 export PATH=~/bin:"$PATH"
-
 
 if type brew >/dev/null 2>&1; then
     BREW_PREFIX=$(brew --prefix)
@@ -24,3 +18,5 @@ PS1="$PS1\[\e[m\]\w\[\e[1;31m\]> \[\e[0m\]"
 
 
 VENVROOT=~/.envs
+export PYENV_ROOT="$HOME/.pyenv"
+eval "$(pyenv init -)"

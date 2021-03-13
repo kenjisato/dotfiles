@@ -2,7 +2,15 @@
 # Python ------------------------------------------------------
 
 ## Populate Python virtual environments here.
+
 export VENVROOT=~/.envs
+
+
+# R -----------------------------------------------------------
+
+## Never save R workspace.
+
+alias rns='R --no-save'
 
 ## pyenv
 export PYENV_ROOT=${HOME}/.pyenv
@@ -10,8 +18,6 @@ if command -v pyenv 1>/dev/null 2>&1; then
   eval "$(pyenv init -)"
 fi
 
-## Workaround for brew doctor showing many conflicting -config files.
-alias brew="PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin brew"
 
 # pandoc -----------------------------------------------------------
 
