@@ -14,13 +14,19 @@ set ignorecase
 set smartcase
 set hidden
 set history=2000
-set autoindent
-set expandtab
-set tabstop=4
-set softtabstop=4
-set shiftwidth=4
+
 set helplang=en
+set autoindent
 set cindent
+set tabstop=4
+set shiftwidth=4
+
+let _curfile = expand("%:t")
+set softtabstop=4
+if _curfile =~ "Makefile" || _curfile =~ "makefile"
+  set noexpandtab
+else
+  set expandtab
+endif
 
 colorscheme desert
-
