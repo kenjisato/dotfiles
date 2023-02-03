@@ -1,6 +1,6 @@
 DOT_DIRECTORY=~/dotfiles
 CANDIDATES=(".??*" "bin")
-EXCLUSION=(".git")
+EXCLUSION=(".git" ".DS_Store")
 
 is_excluded () {
   for exclusion in ${EXCLUSION[@]}

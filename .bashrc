@@ -123,3 +123,4 @@ if type brew >/dev/null 2>&1; then
         source $BREW_PREFIX/Library/Contributions/brew_bash_completion.sh >/dev/null 2>&1
     fi
 fi
+. "$HOME/.cargo/env"

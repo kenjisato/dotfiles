@@ -17,7 +17,7 @@ set history=2000
 
 set helplang=en
 set autoindent
-set cindent
+"set cindent
 set tabstop=4
 set shiftwidth=4
 
@@ -29,4 +29,4 @@ else
   set expandtab
 endif
 
-colorscheme desert
+colorscheme elflord 
