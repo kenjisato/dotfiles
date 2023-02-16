@@ -42,4 +42,4 @@ export PATH="$GOBIN:$PATH"
 # [[ -f ~/.zprofile ]] && source ~/.zprofile
 
 [[ -f ~/.secret ]] && source ~/.secret
-[[ -f ~/.cargo/env ]] && source ~/.cargo/env"
+[[ -f ~/.cargo/env ]] && source ~/.cargo/env
