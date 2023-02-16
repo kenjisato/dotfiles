@@ -18,5 +18,6 @@ fi
 unset __conda_setup
 # <<< conda initialize <<<
 
-eval "$(starship init zsh)"
-
+if type starship > /dev/null 2>&1; then
+  eval "$(starship init zsh)"
+fi

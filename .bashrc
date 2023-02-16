@@ -107,11 +107,6 @@ fi
 
 VENVROOT=~/.envs
 
-if type pyenv > /dev/null 2>&1; then
-  export PYENV_ROOT="$HOME/.pyenv"
-  eval "$(pyenv init -)"
-fi
-
 if type starship > /dev/null 2>&1; then
   eval "$(starship init bash)"
 fi
