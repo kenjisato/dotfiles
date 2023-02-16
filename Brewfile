@@ -1,6 +1,7 @@
 tap "homebrew/bundle"
 brew "hugo"
 brew "imagemagick"
+brew "starship"
 brew "subversion"
 brew "tmux"
 brew "tree"
