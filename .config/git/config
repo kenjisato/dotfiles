@@ -1,5 +1,5 @@
 [core]
-	excludesfile = $HOME/.gitignore_global
+	excludesfile = ~/.config/git/ignore
 	autocrlf = input
 	filemode = false
 	eol = lf
@@ -13,9 +13,9 @@
 	name = Kenji Sato
 	email = mail@kenjisato.jp
 [commit]
-	template = $HOME/.stCommitMsg
+	template = ~/.stCommitMsg
 [ghq]
-	root = $HOME/local/src
+	root = ~/local/src
 [filter "lfs"]
 	clean = git-lfs clean -- %f
 	smudge = git-lfs smudge -- %f
