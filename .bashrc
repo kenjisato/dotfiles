@@ -103,19 +103,20 @@ if [ -f /etc/bash_completion ] && ! shopt -oq posix; then
 fi
 
 
-
-
 VENVROOT=~/.envs
 
 if type starship > /dev/null 2>&1; then
   eval "$(starship init bash)"
 fi
 
-# For macOS
-if type brew >/dev/null 2>&1; then
-    BREW_PREFIX=$(brew --prefix)
-    if [ -e $BREW_PREFIX/Library/Contributions/brew_bash_completion.sh ]; then
-        source $BREW_PREFIX/Library/Contributions/brew_bash_completion.sh >/dev/null 2>&1
-    fi
+
+if [ "$(uname)" = 'Darwin' ]; then
+  . .bash/mac.sh
+elif [ "$(uname)" = 'Linux' ]; then
+  . .bash/linux.sh
+  if [[ "$(uname -r)" = *microsoft* ]]; then
+    . .bash/wsl.sh
+  fi
 fi
+
 . "$HOME/.cargo/env"

@@ -8,8 +8,4 @@ export PATH=~/bin:"$PATH"
 
 export GOPATH=$HOME/.go
 
-test -r ~/.bashrc && . ~/.bashrc
-
-eval $(/opt/homebrew/bin/brew shellenv)
-
 . "$HOME/.cargo/env"
