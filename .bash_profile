@@ -7,5 +7,3 @@ export LC_CTYPE="${LANGUAGE}"
 export PATH=~/bin:"$PATH"
 
 export GOPATH=$HOME/.go
-
-. "$HOME/.cargo/env"
