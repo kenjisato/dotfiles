@@ -1,0 +1,48 @@
+```{r setup}
+
+```
+
+Question
+========
+
+Question. 
+
+```python
+print("hello")
+```
+
+Answerlist
+----------
+
+```{r solution, echo = FALSE}
+exsol <- "10000"
+```
+
+* Correct
+* Wrong 1
+* Wrong 2
+* Wrong 3
+* Wrong 4
+
+Solution
+========
+
+General feedback.
+
+Answerlist
+----------
+
+* Feedback for option 1.
+* Feedback for option 2.
+* Feedback for option 3.
+* Feedback for option 4.
+* Feedback for option 5.
+
+Meta-information
+================
+exname: short-name
+extitle: "Longer description"
+exsection: a/b/c
+extype: schoice
+exsolution: `r exsol`
+exshuffle: FALSE

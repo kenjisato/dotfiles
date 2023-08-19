@@ -1,0 +1,60 @@
+{
+  "title": "Shortcut Keyboard | Zoom",
+  "rules": [
+    {
+      "description": "Shortcut Keyboard: Zoom Shortcuts",
+      "manipulators": [
+        {
+          "type": "basic",
+          "from": {
+              "key_code": "g"
+          },
+          "to": {
+            "key_code": "a",
+            "modifiers": ["command", "shift"]
+          },
+          "conditions": [
+              {
+                  "type": "device_if",
+                  "identifiers": [
+                      {
+                          "vendor_id": 1452,
+                          "product_id": 556
+                      }
+                  ]
+              }, 
+              {
+                "type": "frontmost_application_if",
+                "bundle_identifiers": ["^us\\.zoom\\.xos$"]
+              }
+          ]
+        },
+        {
+          "type": "basic",
+          "from": {
+              "key_code": "h"
+          },
+          "to": {
+            "key_code": "v",
+            "modifiers": ["command", "shift"]
+          },
+          "conditions": [
+              {
+                  "type": "device_if",
+                  "identifiers": [
+                      {
+                          "vendor_id": 1452,
+                          "product_id": 556
+                      }
+                  ]
+              },
+              {
+                "type": "frontmost_application_if",
+                "bundle_identifiers": ["^us\\.zoom\\.xos$"]
+              }
+          ]
+        }
+      ]
+    }
+  ]
+}
