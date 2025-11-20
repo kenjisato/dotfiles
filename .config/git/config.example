@@ -1,0 +1,14 @@
+[core]
+    excludesfile = ~/.config/git/ignore
+    autocrlf = input
+    filemode = false
+    eol = lf
+[user]
+    name = Your Name
+    email = you@example.com
+[commit]
+    template = ~/.stCommitMsg
+[ghq]
+    root = ~/local/src
+[http]
+    postBuffer = 16M

@@ -101,6 +101,7 @@ fi
 VENVROOT=~/.envs
 
 if type starship > /dev/null 2>&1; then
+  export VIRTUAL_ENV_DISABLE_PROMPT=1
   eval "$(starship init bash)"
 fi
 

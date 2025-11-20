@@ -15,4 +15,4 @@ alias rns='R --no-save'
 
 # pandoc -----------------------------------------------------------
 
-PATH=/Applications/RStudio.app/Contents/MacOS/pandoc:$PATH
+path=(/Applications/RStudio.app/Contents/MacOS/pandoc(N-/) $path)

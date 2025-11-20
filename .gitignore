@@ -1,3 +1,11 @@
 .config/rstudio/rstudio-prefs.json
 .config/karabiner/automatic_backups
 .config/configstore
+.config/uv/uv-receipt.json
+.config/git/config
+.config/gh/config.yml
+.config/gh/hosts.yml
+.config/flutter/tool_state
+.config/iterm2
+.config/powershell
+Brewfile.lock.json

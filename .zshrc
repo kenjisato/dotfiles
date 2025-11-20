@@ -1,23 +1,17 @@
+setopt extended_glob
+
 for f in ~/.zsh/[0-9]*.(sh|zsh); do
     source "$f"
 done
 
-
-# >>> conda initialize >>>
-# !! Contents within this block are managed by 'conda init' !!
-__conda_setup="$('/opt/homebrew/Caskroom/mambaforge/base/bin/conda' 'shell.zsh' 'hook' 2> /dev/null)"
-if [ $? -eq 0 ]; then
-    eval "$__conda_setup"
-else
-    if [ -f "/opt/homebrew/Caskroom/mambaforge/base/etc/profile.d/conda.sh" ]; then
-        . "/opt/homebrew/Caskroom/mambaforge/base/etc/profile.d/conda.sh"
-    else
-        export PATH="/opt/homebrew/Caskroom/mambaforge/base/bin:$PATH"
-    fi
+if [[ -o interactive ]]; then
+  autoload -Uz compinit
+  zcomp_cache="${XDG_CACHE_HOME:-$HOME/.cache}/zsh"
+  mkdir -p "${zcomp_cache}"
+  compinit -C -d "${zcomp_cache}/zcompdump"
 fi
-unset __conda_setup
-# <<< conda initialize <<<
 
-if type starship > /dev/null 2>&1; then
+if command -v starship > /dev/null 2>&1; then
+  export VIRTUAL_ENV_DISABLE_PROMPT=1
   eval "$(starship init zsh)"
 fi

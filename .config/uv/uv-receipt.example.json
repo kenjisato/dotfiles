@@ -1,0 +1,17 @@
+{
+  "binaries": ["uv", "uvx"],
+  "install_layout": "cargo-home",
+  "install_prefix": "~/.cargo",
+  "modify_path": true,
+  "provider": {
+    "source": "cargo-dist",
+    "version": "<installer version>"
+  },
+  "source": {
+    "app_name": "uv",
+    "name": "uv",
+    "owner": "astral-sh",
+    "release_type": "github"
+  },
+  "version": "<installed version>"
+}
