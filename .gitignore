@@ -1,0 +1,11 @@
+# OS / editor noise
+.DS_Store
+
+# Legacy ~/.config-as-symlink layout (will be removed after manual migration)
+.config/
+
+# App-managed state under the new layout
+xdg-config/macos/karabiner/automatic_backups/
+
+# brew bundle lockfile (created next to whichever Brewfile you run against)
+Brewfile.lock.json

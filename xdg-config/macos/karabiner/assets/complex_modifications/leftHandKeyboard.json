@@ -1,0 +1,198 @@
+{
+  "title": "Shortcut Keyboard | Common",
+  "rules": [
+    {
+      "description": "Shortcut Keyboard Top Row: Launch Zoom/Teams/Outlook",
+      "manipulators": [
+        {
+          "type": "basic",
+          "from": {
+              "key_code": "a"
+          },
+          "to": {
+            "shell_command": "open -a zoom.us"
+          },
+          "conditions": [
+              {
+                  "type": "device_if",
+                  "identifiers": [
+                      {
+                          "vendor_id": 1452,
+                          "product_id": 556
+                      }
+                  ]
+              }
+          ]
+        },
+        {
+          "type": "basic",
+          "from": {
+              "key_code": "b"
+          },
+          "to": {
+            "shell_command": "open -a Microsoft\\ Teams"
+          },
+          "conditions": [
+              {
+                  "type": "device_if",
+                  "identifiers": [
+                      {
+                          "vendor_id": 1452,
+                          "product_id": 556
+                      }
+                  ]
+              }
+          ]
+        },
+        {
+          "type": "basic",
+          "from": {
+              "key_code": "c"
+          },
+          "to": {
+            "shell_command": "open -a Microsoft\\ Outlook"
+          },
+          "conditions": [
+              {
+                  "type": "device_if",
+                  "identifiers": [
+                      {
+                          "vendor_id": 1452,
+                          "product_id": 556
+                      }
+                  ]
+              }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "Shortcut Keyboard: Dials",
+      "manipulators": [
+        {
+          "type": "basic",
+          "from": {
+              "key_code": "1"
+          },
+          "to": {
+            "key_code": "display_brightness_decrement"
+          },
+          "conditions": [
+              {
+                  "type": "device_if",
+                  "identifiers": [
+                      {
+                          "vendor_id": 1452,
+                          "product_id": 556
+                      }
+                  ]
+              }
+          ]
+        },
+        {
+          "type": "basic",
+          "from": {
+              "key_code": "3"
+          },
+          "to": {
+            "key_code": "display_brightness_increment"
+          },
+          "conditions": [
+              {
+                  "type": "device_if",
+                  "identifiers": [
+                      {
+                          "vendor_id": 1452,
+                          "product_id": 556
+                      }
+                  ]
+              }
+          ]
+        },
+        {
+          "type": "basic",
+          "from": {
+              "key_code": "4"
+          },
+          "to": {
+            "key_code": "volume_decrement"
+          },
+          "conditions": [
+              {
+                  "type": "device_if",
+                  "identifiers": [
+                      {
+                          "vendor_id": 1452,
+                          "product_id": 556
+                      }
+                  ]
+              }
+          ]
+        },
+        {
+          "type": "basic",
+          "from": {
+              "key_code": "6"
+          },
+          "to": {
+            "key_code": "volume_increment"
+          },
+          "conditions": [
+              {
+                  "type": "device_if",
+                  "identifiers": [
+                      {
+                          "vendor_id": 1452,
+                          "product_id": 556
+                      }
+                  ]
+              }
+          ]
+        },
+        {
+          "type": "basic",
+          "from": {
+              "key_code": "7"
+          },
+          "to": {
+            "key_code": "hyphen",
+            "modifiers": ["command"]
+
+          },
+          "conditions": [
+              {
+                  "type": "device_if",
+                  "identifiers": [
+                      {
+                          "vendor_id": 1452,
+                          "product_id": 556
+                      }
+                  ]
+              }
+          ]
+        },
+        {
+          "type": "basic",
+          "from": {
+              "key_code": "9"
+          },
+          "to": {
+            "key_code": "equal_sign",
+            "modifiers": ["command"]
+          },
+          "conditions": [
+              {
+                  "type": "device_if",
+                  "identifiers": [
+                      {
+                          "vendor_id": 1452,
+                          "product_id": 556
+                      }
+                  ]
+              }
+          ]
+        }
+      ]
+    }
+  ]
+}

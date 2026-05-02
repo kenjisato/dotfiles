@@ -1,0 +1,27 @@
+snippet schoice
+	`r paste0(readLines("~/.config/rstudio/snippets/exams/schoice.txt"), collapse = '\n')`
+
+snippet here
+	`r doc <- dirname(tools::file_path_as_absolute(rstudioapi::documentPath())); prefix <- rstudioapi::getActiveProject(); sub(prefix, "", doc, fixed = TRUE)`
+
+
+snippet [
+	[${1:label}](${2:location})
+
+snippet ![
+	![${1:label}](${2:location})
+
+snippet r
+	```{r ${1:label}, ${2:options}}
+	${0}
+	```
+
+snippet rcpp
+	```{r, engine='Rcpp'}
+	#include <Rcpp.h>
+	using namespace Rcpp;
+	
+	${0}
+	
+	```
+

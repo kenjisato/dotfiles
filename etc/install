@@ -1,0 +1,48 @@
+#!/bin/bash
+
+set -e
+
+# Install Homebrew
+if command -v brew > /dev/null 2>&1; then
+  echo "Homebrew is already installed."
+else
+  echo "Installing Homebrew..."
+  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+fi
+
+# Set zsh as default shell
+if [ "${SHELL}" != "$(which zsh)" ]; then
+  echo "Changing default shell to zsh..."
+  chsh -s "$(which zsh)"
+fi
+
+# Install Rust via rustup
+if command -v rustup > /dev/null 2>&1; then
+  echo "Rust is already installed."
+else
+  echo "Installing Rust..."
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+fi
+
+# Install uv (Python package manager)
+if command -v uv > /dev/null 2>&1; then
+  echo "uv is already installed."
+else
+  echo "Installing uv..."
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+fi
+
+# Install ghr (repository manager) via cargo
+# Makes the install method identical across macOS / Linux / WSL / Windows,
+# avoiding a non-standard Homebrew tap and scoop.
+if command -v ghr > /dev/null 2>&1; then
+  echo "ghr is already installed."
+else
+  echo "Installing ghr..."
+  # rustup may have been installed in this same run — make cargo callable.
+  [ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
+  cargo install ghr
+fi
+
+echo "$(tput setaf 2)Install complete!$(tput sgr0)"
+echo "Please log out and log back in for the shell change to take effect."

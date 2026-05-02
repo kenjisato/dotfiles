@@ -1,0 +1,3 @@
+dots	~/dotfiles	dotfiles
+src	~/.ghr	ghr のリポジトリルート
+envs	~/.envs	Python仮想環境

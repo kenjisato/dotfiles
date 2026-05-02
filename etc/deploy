@@ -1,0 +1,155 @@
+#!/usr/bin/env bash
+#
+# Symlink dotfiles into $HOME based on the detected OS.
+#
+# Layout (under $DOTFILES):
+#   home/{common,$OS}/*        -> $HOME/*                 (per top-level entry)
+#   shell/{zsh,bash,shared}/*  -> $HOME/*                 (per top-level entry)
+#   xdg-config/{common,$OS}/   -> $HOME/.config/...       (per FILE, preserving subdirs)
+#   bin/{common,$OS}/*         -> $HOME/bin/*             (per file)
+#
+# $OS is one of: macos, linux, wsl
+# Windows: use etc/deploy.ps1 (planned).
+#
+# Private overlay: if $DOTFILES_PRIVATE is set, the same layout under that
+# directory is overlaid on top, so private files override public ones with
+# the same destination path. Easiest way to set it is to run the private
+# repo's own etc/deploy, which sets the env var and execs back into here.
+
+set -e
+
+DOTFILES="$(cd "$(dirname "$0")/.." && pwd)"
+
+DRY_RUN=0
+for arg in "$@"; do
+  case "$arg" in
+    -n|--dry-run) DRY_RUN=1 ;;
+    -h|--help)
+      sed -n '3,18p' "$0" | sed 's/^# \?//'
+      exit 0 ;;
+    *) echo "Unknown option: $arg" >&2; exit 1 ;;
+  esac
+done
+
+case "$(uname)" in
+  Darwin) OS=macos ;;
+  Linux)
+    if grep -qiE 'microsoft|wsl' /proc/version 2>/dev/null; then
+      OS=wsl
+    else
+      OS=linux
+    fi
+    ;;
+  *) echo "Unsupported OS: $(uname)" >&2; exit 1 ;;
+esac
+
+PRIVATE=""
+if [ -n "${DOTFILES_PRIVATE:-}" ] && [ -d "$DOTFILES_PRIVATE" ]; then
+  PRIVATE="$DOTFILES_PRIVATE"
+fi
+
+echo "Detected OS:  $OS"
+echo "Public:       $DOTFILES"
+[ -n "$PRIVATE" ] && echo "Private:      $PRIVATE" || echo "Private:      (none — run dotfiles-private/etc/deploy to overlay)"
+[ $DRY_RUN -eq 1 ] && echo "(dry-run — no changes will be made)"
+echo
+
+# ~/.config and ~/bin must be real directories: this script writes per-file
+# symlinks under them, and if either is itself a symlink, the new links land
+# inside the symlink's target instead of in $HOME.
+for dir in "$HOME/.config" "$HOME/bin"; do
+  if [ -L "$dir" ]; then
+    cat >&2 <<EOF
+
+ERROR: $dir is a symlink to $(readlink "$dir")
+
+Replace it with a real directory before re-running:
+
+  rm "$dir"
+  mkdir "$dir"
+  # If $dir is ~/.config, copy live app state back in first:
+  #   cp -R ~/.config-backup/* ~/.config/
+  bash "$DOTFILES/etc/deploy"
+
+If migrating ~/.config, also remove the stale tree inside the repo:
+  rm -rf "$DOTFILES/.config"
+
+EOF
+    exit 1
+  fi
+done
+
+mkdir -p "$HOME/.config" "$HOME/bin"
+
+link() {
+  local src="$1" dst="$2"
+  [ -e "$src" ] || return 0
+  case "$(basename "$src")" in
+    .DS_Store|.gitkeep) return 0 ;;
+    *.example|*.example.*) return 0 ;;
+  esac
+  if [ -e "$dst" ] && [ ! -L "$dst" ]; then
+    echo "skip $dst (exists and is not a symlink)"
+    return
+  fi
+  if [ $DRY_RUN -eq 1 ]; then
+    echo "would link: $dst -> $src"
+  else
+    ln -snfv "$src" "$dst"
+  fi
+}
+
+# Symlink the immediate children of $1 into directory $2 (per-entry).
+link_children() {
+  local src_dir="$1" dst_dir="$2"
+  [ -d "$src_dir" ] || return 0
+  shopt -s nullglob dotglob
+  local entry
+  for entry in "$src_dir"/*; do
+    link "$entry" "$dst_dir/$(basename "$entry")"
+  done
+  shopt -u nullglob dotglob
+}
+
+# Walk every file under $1 and link it into $HOME/.config preserving subdirs.
+# Subdirs are created as real directories so apps can write live state alongside
+# managed files without polluting the dotfiles repo.
+link_xdg_files() {
+  local src_root="$1"
+  [ -d "$src_root" ] || return 0
+  local src rel dst
+  while IFS= read -r -d '' src; do
+    rel="${src#$src_root/}"
+    dst="$HOME/.config/$rel"
+    if [ $DRY_RUN -eq 0 ]; then
+      mkdir -p "$(dirname "$dst")"
+    fi
+    link "$src" "$dst"
+  done < <(find "$src_root" -type f -print0)
+}
+
+deploy_tree() {
+  local root="$1"
+  link_children  "$root/home/common"        "$HOME"
+  link_children  "$root/home/$OS"           "$HOME"
+  link_children  "$root/shell/zsh"          "$HOME"
+  link_children  "$root/shell/bash"         "$HOME"
+  link_children  "$root/shell/shared"       "$HOME"
+  link_xdg_files "$root/xdg-config/common"
+  link_xdg_files "$root/xdg-config/$OS"
+  link_children  "$root/bin/common"         "$HOME/bin"
+  link_children  "$root/bin/$OS"            "$HOME/bin"
+}
+
+echo "--- public ---"
+deploy_tree "$DOTFILES"
+
+if [ -n "$PRIVATE" ]; then
+  echo
+  echo "--- private overlay ---"
+  deploy_tree "$PRIVATE"
+fi
+
+echo
+echo "$(tput setaf 2 2>/dev/null)Deploy complete!$(tput sgr0 2>/dev/null)"
+echo "Open a new shell to load the updated config."
