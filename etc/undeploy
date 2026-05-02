@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+#
+# Undeploy dotfiles — remove symlinks in $HOME that point into the
+# public dotfiles repo (and the private overlay, if $DOTFILES_PRIVATE
+# is set).
+#
+# Scans $HOME (top-level), $HOME/.config (recursive), and $HOME/bin
+# (top-level) for symlinks whose target resolves into either repo.
+# Regular files are never touched.
+#
+# Usage:
+#   bash etc/undeploy [--dry-run]
+
+set -e
+
+DOTFILES="$(cd "$(dirname "$0")/.." && pwd)"
+
+DRY_RUN=0
+for arg in "$@"; do
+  case "$arg" in
+    -n|--dry-run) DRY_RUN=1 ;;
+    -h|--help)
+      sed -n '3,13p' "$0" | sed 's/^# \?//'
+      exit 0 ;;
+    *) echo "Unknown option: $arg" >&2; exit 1 ;;
+  esac
+done
+
+PRIVATE=""
+if [ -n "${DOTFILES_PRIVATE:-}" ] && [ -d "$DOTFILES_PRIVATE" ]; then
+  PRIVATE="$DOTFILES_PRIVATE"
+fi
+
+echo "Public:       $DOTFILES"
+[ -n "$PRIVATE" ] && echo "Private:      $PRIVATE" || echo "Private:      (none)"
+[ $DRY_RUN -eq 1 ] && echo "(dry-run — no changes will be made)"
+echo
+
+# Check whether a symlink's target lives inside one of the repos.
+points_to_repo() {
+  local link="$1"
+  local target
+  target="$(readlink "$link" 2>/dev/null)" || return 1
+
+  # Resolve relative targets against the link's parent directory.
+  if [[ "$target" != /* ]]; then
+    target="$(cd "$(dirname "$link")" && cd "$(dirname "$target")" && pwd)/$(basename "$target")"
+  fi
+
+  case "$target" in
+    "$DOTFILES"/*) return 0 ;;
+  esac
+  if [ -n "$PRIVATE" ]; then
+    case "$target" in
+      "$PRIVATE"/*) return 0 ;;
+    esac
+  fi
+  return 1
+}
+
+COUNT=0
+
+# Remove a symlink if it points into either repo.
+maybe_remove() {
+  local link="$1"
+  [ -L "$link" ] || return 0
+  points_to_repo "$link" || return 0
+
+  if [ $DRY_RUN -eq 1 ]; then
+    echo "would remove: $link -> $(readlink "$link")"
+  else
+    echo "remove: $link -> $(readlink "$link")"
+    rm "$link"
+  fi
+  COUNT=$((COUNT + 1))
+}
+
+# --- $HOME top-level ---
+shopt -s nullglob dotglob
+for f in "$HOME"/*; do
+  # Skip directories we scan separately.
+  case "$(basename "$f")" in
+    .config|bin) continue ;;
+  esac
+  maybe_remove "$f"
+done
+shopt -u nullglob dotglob
+
+# --- $HOME/.config (recursive — mirrors link_xdg_files) ---
+if [ -d "$HOME/.config" ]; then
+  while IFS= read -r -d '' f; do
+    maybe_remove "$f"
+  done < <(find "$HOME/.config" -type l -print0)
+fi
+
+# --- $HOME/bin top-level ---
+if [ -d "$HOME/bin" ]; then
+  shopt -s nullglob dotglob
+  for f in "$HOME/bin"/*; do
+    maybe_remove "$f"
+  done
+  shopt -u nullglob dotglob
+fi
+
+echo
+if [ $COUNT -eq 0 ]; then
+  echo "Nothing to remove."
+else
+  if [ $DRY_RUN -eq 1 ]; then
+    echo "Would remove $COUNT symlink(s). Re-run without --dry-run to apply."
+  else
+    echo "$(tput setaf 2 2>/dev/null)Removed $COUNT symlink(s).$(tput sgr0 2>/dev/null)"
+  fi
+fi
