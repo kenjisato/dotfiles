@@ -10,6 +10,18 @@ else
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 fi
 
+# Ensure brew is on PATH (needed when Homebrew was just installed above)
+if ! command -v brew > /dev/null 2>&1; then
+  for prefix in /opt/homebrew /home/linuxbrew/.linuxbrew /usr/local; do
+    [ -x "$prefix/bin/brew" ] && eval "$("$prefix/bin/brew" shellenv)" && break
+  done
+fi
+
+# Install packages from Brewfile
+DOTFILES="$(cd "$(dirname "$0")/.." && pwd)"
+echo "Installing packages from Brewfile..."
+brew bundle --file="$DOTFILES/pkg/Brewfile"
+
 # Set zsh as default shell
 if [ "${SHELL}" != "$(which zsh)" ]; then
   echo "Changing default shell to zsh..."
@@ -32,16 +44,24 @@ else
   curl -LsSf https://astral.sh/uv/install.sh | sh
 fi
 
-# Install ghr (repository manager) via cargo
-# Makes the install method identical across macOS / Linux / WSL / Windows,
-# avoiding a non-standard Homebrew tap and scoop.
-if command -v ghr > /dev/null 2>&1; then
-  echo "ghr is already installed."
-else
-  echo "Installing ghr..."
+# Install Python dev tools via uv
+if [ -f "$DOTFILES/pkg/uv-tools.txt" ]; then
+  echo "Installing Python dev tools..."
+  while IFS= read -r pkg; do
+    [ -z "$pkg" ] || [[ "$pkg" == \#* ]] && continue
+    uv tool install "$pkg"
+  done < "$DOTFILES/pkg/uv-tools.txt"
+fi
+
+# Install Rust tools via cargo
+if [ -f "$DOTFILES/pkg/cargo-tools.txt" ]; then
+  echo "Installing Cargo tools..."
   # rustup may have been installed in this same run — make cargo callable.
   [ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
-  cargo install ghr
+  while IFS= read -r pkg; do
+    [ -z "$pkg" ] || [[ "$pkg" == \#* ]] && continue
+    cargo install "$pkg"
+  done < "$DOTFILES/pkg/cargo-tools.txt"
 fi
 
 echo "$(tput setaf 2)Install complete!$(tput sgr0)"

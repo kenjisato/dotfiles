@@ -1,0 +1,5 @@
+bump-my-version
+cookiecutter
+maturin
+pre-commit
+tox
