@@ -7,10 +7,9 @@ A private overlay repo (`dotfiles-private`) can be layered on top via `$DOTFILES
 ## Setup Commands
 
 ```bash
-bash etc/install            # Install Homebrew, set zsh as default, install Rust + uv
+bash etc/install            # Homebrew + brew bundle, zsh, Rust, uv, uv tools, cargo tools
 bash etc/deploy             # Detect OS and create symlinks
 bash etc/deploy --dry-run   # Preview what would be linked
-brew bundle --file=pkg/Brewfile   # Homebrew packages (macOS / Linuxbrew)
 ```
 
 `etc/deploy` is idempotent. It refuses to run if `~/.config` is itself a symlink (the legacy whole-directory layout) and prints migration instructions.
@@ -20,7 +19,7 @@ brew bundle --file=pkg/Brewfile   # Homebrew packages (macOS / Linuxbrew)
 ```
 dotfiles/
 ├── home/
-│   ├── common/         # ~/.* files for any OS (.vimrc, .tmux.conf, .Rprofile, ...)
+│   ├── common/         # ~/.* files for any OS (.tmux.conf, .Rprofile, ...)
 │   ├── macos/
 │   ├── linux/
 │   ├── wsl/
@@ -30,7 +29,7 @@ dotfiles/
 │   ├── bash/           # ~/.bash_profile, ~/.bashrc, ~/.bash/
 │   └── shared/         # ~/.shell/<file>.sh — sourced by both .zshrc and .bashrc
 ├── xdg-config/         # symlinked into ~/.config/<dir> per subdirectory
-│   ├── common/         # cdmarks.tsv, gh/, git/, rstudio/, uv/
+│   ├── common/         # cdmarks.tsv, gh/, git/, nvim/, rstudio/, uv/
 │   ├── macos/          # karabiner/
 │   ├── linux/          # mozc/
 │   ├── wsl/
@@ -42,7 +41,9 @@ dotfiles/
 │   ├── wsl/
 │   └── windows/
 ├── pkg/
-│   └── Brewfile        # cross-platform; cask entries gated by `if OS.mac?`
+│   ├── Brewfile        # cross-platform; cask entries gated by `if OS.mac?`
+│   ├── uv-tools.txt    # Python dev tools installed via `uv tool install`
+│   └── cargo-tools.txt # Rust tools installed via `cargo install`
 └── etc/
     ├── install
     └── deploy
@@ -77,7 +78,7 @@ The zsh config is layered:
 - `20-fzf.zsh` — Ctrl+] jumps to ghq projects; provides `cdb` bookmark navigation
 - `30_prompt.zsh` — Fallback prompt (skipped when starship is available)
 - `31_history.zsh` — History settings (1M entries)
-- `32_editors.zsh` — Sets vim as EDITOR/GIT_EDITOR/SVN_EDITOR
+- `32_editors.zsh` — Sets nvim as EDITOR/GIT_EDITOR/SVN_EDITOR; aliases `vim` to `nvim`
 - `40_conda.zsh` — Conda init (no-op if conda absent)
 - `90_sci.zsh` — R/Python science environment
 
@@ -95,4 +96,4 @@ The zsh config is layered:
 
 - Homebrew shellenv detection in `shell/zsh/.zprofile`: `/opt/homebrew` (Apple Silicon), `/usr/local` (Intel), `/home/linuxbrew/.linuxbrew` (Linux).
 - `shell/bash/.bash/{mac,linux,wsl}.sh` are platform-specific stubs sourced from `.bashrc` based on `uname`.
-- Windows: use `pwsh -File etc/deploy.ps1`. The Windows deploy is intentionally narrow — PowerShell profile + a few cross-platform dotfiles (`.vimrc`, `.tmux.conf`, `.vim/`).
+- Windows: use `pwsh -File etc/deploy.ps1`. The Windows deploy is intentionally narrow — PowerShell profile + a few cross-platform dotfiles (`.tmux.conf`, etc.).
