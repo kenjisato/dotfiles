@@ -1,0 +1,35 @@
+#compdef py-with
+# Completion for py-with. Lists *.txt files under $PYWITH_DIR
+# (default: ~/.config/py-with) for the -f/--file argument, and defers to the
+# wrapped command's own completion for everything after the command name.
+
+local pywith_dir="${PYWITH_DIR:-$HOME/.config/py-with}"
+local context state line
+typeset -A opt_args
+
+_arguments -C \
+  '(- *)'{-h,--help}'[show help]' \
+  '(- *)'{-l,--list}'[list available requirements files]' \
+  '(-f --file)'{-f,--file}'[requirements file]:file:->reqfile' \
+  '(-p --python)'{-p,--python}'[Python version forwarded to uv run]:version:' \
+  \*{-w,--with}'[extra package forwarded to uv run --with]:package:' \
+  '(-): :->cmd' \
+  '*::arg:->args'
+
+case $state in
+  reqfile)
+    local -a files
+    if [[ -d "$pywith_dir" ]]; then
+      files=( "$pywith_dir"/*.txt(N:t) )
+      _describe -t reqfile 'requirements file' files
+    fi
+    ;;
+  cmd)
+    _command_names -e
+    ;;
+  args)
+    shift words
+    (( CURRENT-- ))
+    _normal
+    ;;
+esac

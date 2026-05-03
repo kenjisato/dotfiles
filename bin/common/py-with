@@ -1,0 +1,130 @@
+#!/usr/bin/env bash
+# py-with — run a command in an isolated uv-managed env using a curated
+# requirements file from $PYWITH_DIR (default: ~/.config/py-with).
+#
+# With no command, drops into a python REPL.
+# See ~/.config/py-with/*.txt for available requirement sets, or `py-with -l`.
+set -e
+
+PYWITH_DIR="${PYWITH_DIR:-$HOME/.config/py-with}"
+DEFAULT_NAME="_"
+DEFAULT_CMD="python"
+
+usage() {
+  cat <<EOF
+Usage: py-with [-f NAME] [-p VERSION] [-w PKG]... [COMMAND [ARGS...]]
+       py-with -l | --list
+       py-with -h | --help
+
+Run a command inside an isolated uv-managed environment using a requirements
+file from \$PYWITH_DIR (default: ~/.config/py-with). With no COMMAND (or
+when the first remaining argument starts with '-'), $DEFAULT_CMD is invoked.
+
+Options:
+  -f, --file NAME      Requirements file name (with or without .txt).
+                       Default: _ (resolves to _.txt in \$PYWITH_DIR).
+  -p, --python VERSION Forwarded to 'uv run --python VERSION' (e.g. 3.12).
+  -w, --with PKG       Forwarded to 'uv run --with PKG'. Repeatable.
+  -l, --list           List available requirements files.
+  -h, --help           Show this help.
+
+Argument routing:
+  py-with's own options:  -f/--file, -l/--list, -h/--help
+  uv run pass-through:    -p/--python, -w/--with (only these two)
+  python args:            any other -<flag> after py-with's options is treated
+                          as a python argument; 'python' is auto-prepended.
+                          (e.g. 'py-with -c "print(1)"' → uv run python -c ...)
+
+Examples:
+  py-with                              # python REPL with default deps
+  py-with -f finance                   # python REPL with finance deps
+  py-with -p 3.11                      # python 3.11 REPL with default deps
+  py-with -w numpy                     # quick check with numpy added
+  py-with -w numpy -w pandas ipython
+  py-with -c 'print("hi")'             # one-liner with default deps
+  py-with ipython
+  py-with script.py
+  py-with -f finance -c 'import mplfinance as mpf; ...'
+
+Note:
+  py-with is a deliberately thin wrapper. It only forwards -p/-w to uv run.
+  uv has many more useful flags (--isolated, --no-cache, --frozen,
+  --with-editable, inline script metadata via PEP 723, etc.) — when you
+  outgrow py-with, drop down to 'uv run' directly:
+    \$ uv help run
+    \$ open https://docs.astral.sh/uv/
+EOF
+}
+
+list_files() {
+  if [[ ! -d "$PYWITH_DIR" ]]; then
+    echo "(no $PYWITH_DIR)" >&2
+    return
+  fi
+  shopt -s nullglob
+  local f had=0
+  for f in "$PYWITH_DIR"/*.txt; do
+    basename "$f"
+    had=1
+  done
+  if [[ $had -eq 0 ]]; then
+    echo "(no *.txt files in $PYWITH_DIR)" >&2
+  fi
+}
+
+resolve_file() {
+  local name="$1"
+  if [[ -f "$PYWITH_DIR/$name" ]]; then
+    echo "$PYWITH_DIR/$name"; return 0
+  fi
+  if [[ -f "$PYWITH_DIR/$name.txt" ]]; then
+    echo "$PYWITH_DIR/$name.txt"; return 0
+  fi
+  return 1
+}
+
+req_name="$DEFAULT_NAME"
+uv_extra=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -f|--file)
+      [[ $# -ge 2 ]] || { echo "py-with: $1 requires an argument" >&2; exit 2; }
+      req_name="$2"; shift 2 ;;
+    --file=*)
+      req_name="${1#--file=}"; shift ;;
+    -p|--python)
+      [[ $# -ge 2 ]] || { echo "py-with: $1 requires an argument" >&2; exit 2; }
+      uv_extra+=( --python "$2" ); shift 2 ;;
+    --python=*)
+      uv_extra+=( --python "${1#--python=}" ); shift ;;
+    -w|--with)
+      [[ $# -ge 2 ]] || { echo "py-with: $1 requires an argument" >&2; exit 2; }
+      uv_extra+=( --with "$2" ); shift 2 ;;
+    --with=*)
+      uv_extra+=( --with "${1#--with=}" ); shift ;;
+    -l|--list) list_files; exit 0 ;;
+    -h|--help) usage; exit 0 ;;
+    --) shift; break ;;
+    *) break ;;
+  esac
+done
+
+# Auto-prepend python when no command is given, or when remaining args start
+# with a flag (e.g. -c '...'). Lets `py-with -c 'print(1)'` work naturally.
+if [[ $# -eq 0 || "$1" == -* ]]; then
+  set -- "$DEFAULT_CMD" "$@"
+fi
+
+if ! req_path="$(resolve_file "$req_name")"; then
+  echo "py-with: requirements file not found: $req_name (looked in $PYWITH_DIR)" >&2
+  echo "Available:" >&2
+  list_files >&2
+  exit 1
+fi
+
+if ! command -v uv >/dev/null 2>&1; then
+  echo "py-with: uv not found in PATH" >&2
+  exit 1
+fi
+
+exec uv run "${uv_extra[@]}" --with-requirements "$req_path" "$@"

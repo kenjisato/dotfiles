@@ -28,6 +28,7 @@ fpath=( \
     ~/.zsh/Completion(N-/) \
     ~/.zsh/functions(N-/) \
     ~/.zsh/plugins/zsh-completions(N-/) \
+    ${XDG_CONFIG_HOME:-$HOME/.config}/zsh/completions(N-/) \
     /opt/homebrew/share/zsh/site-functions(N-/) \
     /usr/local/share/zsh/site-functions(N-/) \
     /home/linuxbrew/.linuxbrew/share/zsh/site-functions(N-/) \
