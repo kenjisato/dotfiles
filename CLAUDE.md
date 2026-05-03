@@ -36,7 +36,7 @@ dotfiles/
 │   └── windows/        # NuGet/, powershell/
 ├── bin/
 │   ├── common/
-│   ├── macos/          # battery, wifi (use pmset/airport — macOS-only)
+│   ├── macos/          # battery (use pmset — macOS-only)
 │   ├── linux/
 │   ├── wsl/
 │   └── windows/
