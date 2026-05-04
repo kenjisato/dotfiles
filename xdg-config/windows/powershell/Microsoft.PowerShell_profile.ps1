@@ -16,6 +16,18 @@ if (Get-Module -ListAvailable -Name PSReadLine) {
     Set-PSReadLineKeyHandler -Key UpArrow   -Function HistorySearchBackward
     Set-PSReadLineKeyHandler -Key DownArrow -Function HistorySearchForward
     Set-PSReadLineKeyHandler -Key Tab       -Function MenuComplete
+
+    # Ctrl+] — jump to a ghq-managed repo via fzf (mirrors shell/zsh/.zsh/20-fzf.zsh).
+    function Invoke-FzfGhq {
+        $selected = ghq list --full-path | fzf --query "$($null)"
+        if ($selected) {
+            Set-Location $selected
+            [Microsoft.PowerShell.PSConsoleReadLine]::InvokePrompt()
+        }
+    }
+    Set-PSReadLineKeyHandler -Chord 'Ctrl+]' -ScriptBlock {
+        Invoke-FzfGhq
+    }
 }
 
 # Add ~/bin to PATH (matches the bash/zsh setup).
