@@ -1,61 +1,70 @@
 # dotfiles
 
-Cross-platform dotfiles for macOS, Linux (Ubuntu), and WSL2. Deployment is symlink-based with per-OS dispatch.
+Cross-platform dotfiles for macOS, Linux (Ubuntu), WSL2, and Windows.
+Deployment is symlink-based with per-OS dispatch.
 
-## Quick start
+## Setup from a fresh OS
 
-```bash
-git clone https://github.com/kenjisato/dotfiles.git ~/dotfiles
-cd ~/dotfiles
-bash etc/install            # Homebrew + zsh default shell + Rust + uv
-bash etc/deploy --dry-run   # Preview symlinks
-bash etc/deploy             # Apply
-```
-
-`etc/deploy` detects the OS (`macos` / `linux` / `wsl`) and only links the relevant files.
-
-### Optional: private overlay
-
-User-specific files (personal bookmarks, identity-bearing config) live in a
-separate private repo at `kenjisato/dotfiles-private`. After installing the
-basics and `gh auth login`:
-
-```bash
-ghq get kenjisato/dotfiles-private                # → ~/ghq/github.com/kenjisato/dotfiles-private
-bash $(ghq list -p | grep dotfiles-private)/etc/deploy
-```
-
-`dotfiles-private/etc/deploy` is a thin shim — it sets `$DOTFILES_PRIVATE` to
-its own location and execs `~/dotfiles/etc/deploy`. The public deploy then
-overlays private files on top of public ones (same destination path → private
-wins). Override the public repo location with `$DOTFILES` if it isn't at
-`~/dotfiles`.
+Each section below is self-contained — copy-paste into a freshly installed
+shell to go from "nothing installed" to "fully deployed".
 
 ### macOS
 
 ```bash
+# 1. Xcode Command Line Tools — provides git, make, cc, ld
 xcode-select --install
-# (then the steps above)
-brew bundle --file=pkg/Brewfile
+
+# 2. Clone & run
+git clone https://github.com/kenjisato/dotfiles.git ~/dotfiles
+cd ~/dotfiles
+bash etc/install   # Homebrew + brew bundle + zsh shell + Rust + uv + cargo tools + Claude Code
+bash etc/deploy
 ```
+
+Log out and back in for the zsh default-shell change to take effect.
 
 ### Ubuntu / WSL2
 
 ```bash
+# 1. apt prerequisites
 sudo apt update && sudo apt install -y curl git zsh build-essential
-# (then the quick-start steps)
-brew bundle --file=pkg/Brewfile   # uses Linuxbrew; cask entries auto-skipped
+
+# 2. Clone & run
+git clone https://github.com/kenjisato/dotfiles.git ~/dotfiles
+cd ~/dotfiles
+bash etc/install   # Linuxbrew + brew bundle (cask entries auto-skipped) + Rust + uv + Claude Code
+bash etc/deploy
 ```
 
 ### Windows (PowerShell)
 
+Prerequisites:
+
+- Windows 10 1809+ or Windows 11 (winget is built-in; per-user font registration works)
+- **Developer Mode ON** so `etc/deploy.ps1` can create symlinks without an
+  elevated shell. Either:
+  - GUI: Settings → System → For developers → Developer Mode = ON, or
+  - elevated PowerShell:
+    ```powershell
+    New-ItemProperty `
+        -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock' `
+        -Name 'AllowDevelopmentWithoutDevLicense' `
+        -Value 1 -PropertyType DWORD -Force
+    ```
+
 ```powershell
+# 1. Bootstrap from the built-in Windows PowerShell 5.1 — install git and pwsh 7.
+#    `etc/install.ps1` and friends use ConvertFrom-Json -AsHashtable, which
+#    requires PowerShell 7+.
+winget install --exact --id Git.Git
+winget install --exact --id Microsoft.PowerShell
+
+# 2. Close this window and open a NEW PowerShell session so PATH picks up
+#    git and pwsh, then continue:
 git clone https://github.com/kenjisato/dotfiles.git $HOME\dotfiles
 cd $HOME\dotfiles
-pwsh -File etc\install.ps1 -DryRun  # preview package install
-pwsh -File etc\install.ps1          # winget packages
-pwsh -File etc\deploy.ps1 -DryRun   # preview symlinks
-pwsh -File etc\deploy.ps1           # apply symlinks
+pwsh -File etc\install.ps1   # winget packages + Claude Code + fonts + Windows Terminal overlay
+pwsh -File etc\deploy.ps1
 ```
 
 `etc/install.ps1` reads `pkg/winget-packages*.txt` and runs `winget install`
@@ -72,13 +81,54 @@ Parallels VMs (detected via WMI Manufacturer = Parallels); override with
   the keys we declare are written; host-specific profile entries are
   preserved; the original is backed up first)
 
-Symlink creation requires either an elevated shell (Run as Administrator) or
-**Developer Mode** enabled (Settings → For developers → Developer Mode = ON).
-
 The Windows deploy is intentionally narrower than the bash side — it links the
 PowerShell profile (to `$PROFILE`), `.vimrc`, and `.vim/`. Apps without a
 clean Windows XDG story (gh, git, rstudio, …) are skipped. `.tmux.conf` is
 also skipped: native Windows has no tmux, and WSL has its own filesystem.
+
+## Optional: private overlay
+
+User-specific files (personal bookmarks, identity-bearing config, private
+package manifests) live in a separate private repo at
+`kenjisato/dotfiles-private`. After the main setup completes (`gh` and
+`ghq` are now installed), authenticate and clone it as an overlay:
+
+### macOS / Linux / WSL2
+
+```bash
+gh auth login
+ghq get kenjisato/dotfiles-private
+PRIVATE=$(ghq list -p | grep dotfiles-private)
+bash "$PRIVATE/etc/install"
+bash "$PRIVATE/etc/deploy"
+```
+
+### Windows (PowerShell)
+
+```powershell
+gh auth login
+ghq get kenjisato/dotfiles-private
+$private = ghq list -p | Select-String dotfiles-private
+cd $private
+pwsh -File etc\install.ps1
+pwsh -File etc\deploy.ps1
+```
+
+`dotfiles-private/etc/deploy` is a thin shim — it sets `$DOTFILES_PRIVATE`
+to its own location and execs the public `etc/deploy`. The public deploy
+then overlays private files on top of public ones (same destination path
+→ private wins). Override the public repo location with `$DOTFILES` if
+it isn't at `~/dotfiles` (or `$HOME\dotfiles` on Windows).
+
+## Previewing and undoing
+
+`etc/deploy` is idempotent and supports `--dry-run` (`-DryRun` for the
+PowerShell variant) to preview symlinks without applying them.
+
+`etc/undeploy` (and `etc/undeploy.ps1`) walks `$HOME` and removes only
+symlinks whose target resolves into either repo — regular files are
+never touched. Useful when retiring a host or when an old target was
+removed from `etc/deploy` and left an orphan symlink behind.
 
 ## Upgrading
 
@@ -114,13 +164,13 @@ but it's opt-in.
 
 ## Key features
 
-- **Shell**: zsh with [starship](https://starship.rs) prompt (requires Hack Nerd Font)
+- **Shell**: zsh with [starship](https://starship.rs) prompt (Nerd Font required for icons; installed automatically on macOS via Brewfile and on Windows via `pkg/windows-fonts.txt`)
 - **Repository management**: [ghq](https://github.com/x-motemen/ghq) — `ghq get <url>`, `ghq list`, `ghq list -p` (full paths). Default root `~/ghq`; layout `<host>/<owner>/<repo>`.
-- **Ctrl+]**: fzf picker over `ghq list -p` → `cd` to selection ([shell/zsh/.zsh/20-fzf.zsh](shell/zsh/.zsh/20-fzf.zsh))
+- **Ctrl+]**: fzf picker over `ghq list -p` → `cd` to selection ([shell/zsh/.zsh/20-fzf.zsh](shell/zsh/.zsh/20-fzf.zsh)); same binding in PowerShell ([xdg-config/windows/powershell/Microsoft.PowerShell_profile.ps1](xdg-config/windows/powershell/Microsoft.PowerShell_profile.ps1))
 - **`cdb`**: bookmark navigation (`cdb /list`, `cdb /add <name>`, `cdb <name>`)
 - **Python**: [uv](https://docs.astral.sh/uv/) for package management
 - **Writing**: typst, pandoc
-- **Japanese input (Linux)**: Mozc keybindings in [xdg-config/macos/mozc/](xdg-config/macos/mozc/)
+- **Japanese input (Linux)**: Mozc keybindings in [xdg-config/linux/mozc/](xdg-config/linux/mozc/)
 
 ## Migrating from the old layout
 
