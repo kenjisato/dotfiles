@@ -33,7 +33,7 @@ dotfiles/
 │   ├── macos/          # karabiner/
 │   ├── linux/          # mozc/
 │   ├── wsl/
-│   └── windows/        # NuGet/, powershell/
+│   └── windows/        # NuGet/, powershell/, windows-terminal/ (overlay.json)
 ├── bin/
 │   ├── common/
 │   ├── macos/          # battery (use pmset — macOS-only)
@@ -45,10 +45,15 @@ dotfiles/
 │   ├── uv-tools.txt              # Python dev tools installed via `uv tool install`
 │   ├── cargo-tools.txt           # Rust tools installed via `cargo install`
 │   ├── winget-packages.txt       # Windows; installed on every host
-│   └── winget-packages.metal.txt # Windows; bare-metal only (skipped on Parallels)
+│   ├── winget-packages.metal.txt # Windows; bare-metal only (skipped on Parallels)
+│   └── windows-fonts.txt         # Windows; GitHub-released fonts (per-user HKCU install)
 └── etc/
-    ├── install
-    └── deploy
+    ├── install                   # bash: brew bundle, zsh shell, Rust, uv, cargo tools, Claude Code
+    ├── install.ps1               # winget + Claude Code + install-windows-fonts.ps1 + wt-apply-settings.ps1
+    ├── install-windows-fonts.ps1 # reads pkg/windows-fonts.txt, installs TTFs to per-user HKCU
+    ├── wt-apply-settings.ps1     # deep-merges overlay.json into Windows Terminal settings.json
+    ├── deploy
+    └── deploy.ps1
 ```
 
 ## Deploy Behavior

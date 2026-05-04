@@ -61,8 +61,16 @@ pwsh -File etc\deploy.ps1           # apply symlinks
 `etc/install.ps1` reads `pkg/winget-packages*.txt` and runs `winget install`
 for each entry. Manifests with the `.metal.txt` suffix are skipped on
 Parallels VMs (detected via WMI Manufacturer = Parallels); override with
-`$Env:DOTFILES_HOST_PROFILE = 'metal'` to force. After winget, it also
-installs Claude Code via the official native installer (claude.ai/install.ps1).
+`$Env:DOTFILES_HOST_PROFILE = 'metal'` to force. After winget, it also:
+
+- installs Claude Code via the official native installer (claude.ai/install.ps1)
+- installs fonts declared in `pkg/windows-fonts.txt` per-user (no admin
+  required) via `etc/install-windows-fonts.ps1` — used to bring Nerd Font
+  glyphs onto Windows for Starship icons (winget has no Nerd Font manifest)
+- merges `xdg-config/windows/windows-terminal/overlay.json` into the user's
+  Windows Terminal `settings.json` via `etc/wt-apply-settings.ps1` (only
+  the keys we declare are written; host-specific profile entries are
+  preserved; the original is backed up first)
 
 Symlink creation requires either an elevated shell (Run as Administrator) or
 **Developer Mode** enabled (Settings → For developers → Developer Mode = ON).
@@ -100,6 +108,7 @@ but it's opt-in.
 | [pkg/winget-packages*.txt](pkg/) | winget manifest (Windows). `.metal.txt` for bare-metal-only |
 | [pkg/uv-tools.txt](pkg/uv-tools.txt) | Python dev tools installed via `uv tool install` |
 | [pkg/cargo-tools.txt](pkg/cargo-tools.txt) | Rust tools installed via `cargo install` |
+| [pkg/windows-fonts.txt](pkg/windows-fonts.txt) | Windows fonts (GitHub release ZIPs) installed per-user via HKCU |
 | [etc/](etc/) | Setup scripts |
 
 ## Key features
