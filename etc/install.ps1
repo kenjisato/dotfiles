@@ -105,9 +105,16 @@ function Install-ScoopPackages {
     foreach ($pkg in $Packages) {
         if ($DryRun) { Write-Host "would scoop install: $pkg"; continue }
         Write-Host "scoop install: $pkg" -ForegroundColor Cyan
-        & scoop install $pkg
-        if ($LASTEXITCODE -ne 0) {
-            Write-Warning "scoop install failed for $pkg (exit $LASTEXITCODE) — continuing"
+        # try/catch isolates errors thrown inside scoop's own scripts (e.g.
+        # post-install cleanup hitting a locked temp file) so one package's
+        # hiccup doesn't abort the whole run.
+        try {
+            & scoop install $pkg
+            if ($LASTEXITCODE -ne 0) {
+                Write-Warning "scoop install returned exit $LASTEXITCODE for $pkg — continuing"
+            }
+        } catch {
+            Write-Warning "scoop install threw for $pkg ($_) — continuing"
         }
     }
 }
@@ -117,12 +124,16 @@ function Install-WingetPackages {
     foreach ($pkg in $Packages) {
         if ($DryRun) { Write-Host "would winget install: $pkg"; continue }
         Write-Host "winget install: $pkg" -ForegroundColor Cyan
-        & winget install --id $pkg --exact `
-            --accept-source-agreements --accept-package-agreements `
-            --silent --disable-interactivity
-        # Non-zero exit codes include "already installed" — warn and continue.
-        if ($LASTEXITCODE -ne 0) {
-            Write-Warning "winget install returned exit $LASTEXITCODE for $pkg — continuing"
+        try {
+            & winget install --id $pkg --exact `
+                --accept-source-agreements --accept-package-agreements `
+                --silent --disable-interactivity
+            # Non-zero exit codes include "already installed" — warn and continue.
+            if ($LASTEXITCODE -ne 0) {
+                Write-Warning "winget install returned exit $LASTEXITCODE for $pkg — continuing"
+            }
+        } catch {
+            Write-Warning "winget install threw for $pkg ($_) — continuing"
         }
     }
 }
