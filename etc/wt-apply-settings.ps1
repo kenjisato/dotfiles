@@ -9,7 +9,9 @@
 #
 # Caveats:
 #   - WT settings.json is JSONC (allows // and /* */ comments). We strip
-#     comments before parsing, and write back without them.
+#     comments before parsing using a small state machine that respects
+#     string literals (so URLs containing // inside quoted values survive).
+#     Comments themselves are not preserved on write-back.
 #   - Original file is backed up to settings.json.bak.<timestamp>.
 #   - Targets the Microsoft Store stable WT (Microsoft.WindowsTerminal_8wekyb3d8bbwe).
 #     Preview / Unpackaged builds use different paths and are not handled here.
@@ -40,12 +42,48 @@ if (-not (Test-Path $Settings)) {
 
 function Remove-JsonComments {
     param([string]$Text)
-    # Strip block comments first (non-greedy), then line comments.
-    # Note: this is a simple regex strip — values containing // or /* will be
-    # mangled. WT settings.json doesn't normally hold such strings.
-    $stripped = [regex]::Replace($Text, '(?s)/\*.*?\*/', '')
-    $stripped = [regex]::Replace($stripped, '(?m)//.*?$', '')
-    return $stripped
+    # State-machine strip: skip // line comments and /* */ block comments,
+    # but only when not inside a string literal. URLs in JSON values
+    # ("https://...") would otherwise be mangled by a naive regex.
+    $sb = [System.Text.StringBuilder]::new($Text.Length)
+    $len = $Text.Length
+    $i = 0
+    $inString = $false
+    $escape = $false
+    while ($i -lt $len) {
+        $c = $Text[$i]
+        if ($inString) {
+            [void]$sb.Append($c)
+            if ($escape)        { $escape = $false }
+            elseif ($c -eq '\') { $escape = $true }
+            elseif ($c -eq '"') { $inString = $false }
+            $i++
+            continue
+        }
+        if ($c -eq '"') {
+            $inString = $true
+            [void]$sb.Append($c)
+            $i++
+            continue
+        }
+        if ($c -eq '/' -and ($i + 1) -lt $len) {
+            $next = $Text[$i + 1]
+            if ($next -eq '/') {
+                $i += 2
+                while ($i -lt $len -and $Text[$i] -ne "`n") { $i++ }
+                continue   # leave the newline (if any) for the outer loop
+            }
+            if ($next -eq '*') {
+                $i += 2
+                while ($i -lt $len -and -not ($Text[$i] -eq '*' -and ($i + 1) -lt $len -and $Text[$i + 1] -eq '/')) { $i++ }
+                if ($i -lt $len) { $i += 2 }
+                continue
+            }
+        }
+        [void]$sb.Append($c)
+        $i++
+    }
+    return $sb.ToString()
 }
 
 function Merge-Hashtable {
