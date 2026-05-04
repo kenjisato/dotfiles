@@ -52,8 +52,10 @@ dotfiles/
     ├── install.ps1               # winget + Claude Code + install-windows-fonts.ps1 + wt-apply-settings.ps1
     ├── install-windows-fonts.ps1 # reads pkg/windows-fonts.txt, installs TTFs to per-user HKCU
     ├── wt-apply-settings.ps1     # deep-merges overlay.json into Windows Terminal settings.json
-    ├── deploy
-    └── deploy.ps1
+    ├── deploy                    # bash: create symlinks (per-OS dispatch)
+    ├── deploy.ps1                # PowerShell: create symlinks
+    ├── undeploy                  # bash: remove symlinks pointing into the repo (incl. private overlay)
+    └── undeploy.ps1              # PowerShell counterpart of undeploy
 ```
 
 ## Deploy Behavior
