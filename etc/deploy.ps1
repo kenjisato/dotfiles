@@ -4,11 +4,12 @@
 #
 #   xdg-config/windows/powershell/Microsoft.PowerShell_profile.ps1  ->  $PROFILE
 #   home/common/.vimrc                                              ->  $HOME/.vimrc
-#   home/common/.tmux.conf                                          ->  $HOME/.tmux.conf
 #   home/common/.vim/                                               ->  $HOME/.vim/
 #
 # The PowerShell deploy is intentionally narrower than the bash side — apps
 # without a clean Windows XDG story (gh, git, rstudio, ...) are skipped.
+# .tmux.conf isn't linked: native Windows has no tmux, and WSL has its own
+# filesystem, so a Windows-side symlink doesn't reach any tmux runtime.
 #
 # Symlink creation requires either an elevated shell (Run as Administrator) or
 # Developer Mode enabled (Settings -> For developers -> Developer Mode = ON).
@@ -72,9 +73,8 @@ function Invoke-DeployTree {
     New-DotfileLink (Join-Path $Root 'xdg-config\windows\powershell\Microsoft.PowerShell_profile.ps1') $PROFILE
 
     # home/common/* -> $HOME (the genuinely cross-platform dotfiles)
-    New-DotfileLink (Join-Path $Root 'home\common\.vimrc')    (Join-Path $HOME '.vimrc')
-    New-DotfileLink (Join-Path $Root 'home\common\.tmux.conf') (Join-Path $HOME '.tmux.conf')
-    New-DotfileLink (Join-Path $Root 'home\common\.vim')       (Join-Path $HOME '.vim')
+    New-DotfileLink (Join-Path $Root 'home\common\.vimrc') (Join-Path $HOME '.vimrc')
+    New-DotfileLink (Join-Path $Root 'home\common\.vim')   (Join-Path $HOME '.vim')
 }
 
 Write-Host "--- public ---"

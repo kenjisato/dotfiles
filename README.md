@@ -76,8 +76,9 @@ Symlink creation requires either an elevated shell (Run as Administrator) or
 **Developer Mode** enabled (Settings → For developers → Developer Mode = ON).
 
 The Windows deploy is intentionally narrower than the bash side — it links the
-PowerShell profile (to `$PROFILE`), `.vimrc`, `.tmux.conf`, and `.vim/`. Apps
-without a clean Windows XDG story (gh, git, rstudio, …) are skipped.
+PowerShell profile (to `$PROFILE`), `.vimrc`, and `.vim/`. Apps without a
+clean Windows XDG story (gh, git, rstudio, …) are skipped. `.tmux.conf` is
+also skipped: native Windows has no tmux, and WSL has its own filesystem.
 
 ## Upgrading
 
