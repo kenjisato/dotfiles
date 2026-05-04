@@ -1,5 +1,6 @@
 # scoop packages installed on all Windows hosts (Parallels VM included).
 # Bucket: see etc/install.ps1 (extras + nerd-fonts are added automatically).
+7zip
 siketyan/ghr
 fzf
 starship
