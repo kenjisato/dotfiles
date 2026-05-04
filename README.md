@@ -61,7 +61,8 @@ pwsh -File etc\deploy.ps1           # apply symlinks
 `etc/install.ps1` reads `pkg/winget-packages*.txt` and runs `winget install`
 for each entry. Manifests with the `.metal.txt` suffix are skipped on
 Parallels VMs (detected via WMI Manufacturer = Parallels); override with
-`$Env:DOTFILES_HOST_PROFILE = 'metal'` to force.
+`$Env:DOTFILES_HOST_PROFILE = 'metal'` to force. After winget, it also
+installs Claude Code via the official native installer (claude.ai/install.ps1).
 
 Symlink creation requires either an elevated shell (Run as Administrator) or
 **Developer Mode** enabled (Settings → For developers → Developer Mode = ON).
@@ -79,6 +80,7 @@ their own update commands:
 rustup update                # Rust toolchain (if cargo-tools.txt has entries)
 uv self update               # uv (Python package manager)
 brew update && brew upgrade  # everything in pkg/Brewfile, ghq included
+claude update                # Claude Code (native installer)
 ```
 
 Updates aren't automated on purpose — run them when you want a refresh.
@@ -96,6 +98,8 @@ but it's opt-in.
 | [bin/](bin/) | Scripts symlinked into `~/bin`, split by OS |
 | [pkg/Brewfile](pkg/Brewfile) | Homebrew manifest |
 | [pkg/winget-packages*.txt](pkg/) | winget manifest (Windows). `.metal.txt` for bare-metal-only |
+| [pkg/uv-tools.txt](pkg/uv-tools.txt) | Python dev tools installed via `uv tool install` |
+| [pkg/cargo-tools.txt](pkg/cargo-tools.txt) | Rust tools installed via `cargo install` |
 | [etc/](etc/) | Setup scripts |
 
 ## Key features
@@ -107,23 +111,6 @@ but it's opt-in.
 - **Python**: [uv](https://docs.astral.sh/uv/) for package management
 - **Writing**: typst, pandoc
 - **Japanese input (Linux)**: Mozc keybindings in [xdg-config/macos/mozc/](xdg-config/macos/mozc/)
-
-## Migrating from ghr back to ghq
-
-ghr was tried briefly but reverted: the only ghr-specific feature considered
-(per-repo identity) is solved more cleanly by git's own `includeIf` directive,
-and ghr's Windows install path (cargo + MSVC, or scoop with bucket conflicts
-and 7zip-bootstrap fragility) was much rougher than `winget install x-motemen.ghq`.
-Both tools share the same `<root>/<host>/<owner>/<repo>` layout, so existing
-clones can be moved without re-cloning:
-
-```bash
-brew install ghq             # already in pkg/Brewfile
-mv ~/.ghr ~/ghq              # ghq's default root; layout is identical
-cargo uninstall ghr          # if previously installed
-```
-
-The `cdb` `src` bookmark points to `~/ghq` after this commit.
 
 ## Migrating from the old layout
 

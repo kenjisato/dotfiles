@@ -41,9 +41,11 @@ dotfiles/
 │   ├── wsl/
 │   └── windows/
 ├── pkg/
-│   ├── Brewfile        # cross-platform; cask entries gated by `if OS.mac?`
-│   ├── uv-tools.txt    # Python dev tools installed via `uv tool install`
-│   └── cargo-tools.txt # Rust tools installed via `cargo install`
+│   ├── Brewfile                  # cross-platform; cask entries gated by `if OS.mac?`
+│   ├── uv-tools.txt              # Python dev tools installed via `uv tool install`
+│   ├── cargo-tools.txt           # Rust tools installed via `cargo install`
+│   ├── winget-packages.txt       # Windows; installed on every host
+│   └── winget-packages.metal.txt # Windows; bare-metal only (skipped on Parallels)
 └── etc/
     ├── install
     └── deploy
