@@ -21,7 +21,16 @@ $ErrorActionPreference = 'Stop'
 
 function Get-HostProfile {
     if ($Env:DOTFILES_HOST_PROFILE) { return $Env:DOTFILES_HOST_PROFILE }
-    if (Get-Service prl_tools_service -ErrorAction SilentlyContinue) { return 'parallels' }
+    # WMI Manufacturer / Model is stable across Parallels Desktop versions.
+    try {
+        $cs = Get-CimInstance Win32_ComputerSystem -ErrorAction Stop
+        if ($cs.Manufacturer -like '*Parallels*' -or $cs.Model -like '*Parallels*') {
+            return 'parallels'
+        }
+    } catch {}
+    # Fallback: any prl_* service (newer Parallels versions sometimes rename
+    # prl_tools_service).
+    if (Get-Service -Name 'prl*' -ErrorAction SilentlyContinue) { return 'parallels' }
     return 'metal'
 }
 
@@ -47,13 +56,20 @@ function Install-Scoop {
 
 function Add-ScoopBuckets {
     param([string[]]$Buckets)
+    if ($DryRun) {
+        foreach ($bucket in $Buckets) { Write-Host "would ensure scoop bucket: $bucket" }
+        return
+    }
+    if (-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
+        Write-Warning "scoop not on PATH — skipping bucket setup"
+        return
+    }
     $existing = (& scoop bucket list 2>$null | Out-String)
     foreach ($bucket in $Buckets) {
         if ($existing -match "(?m)^\s*$bucket\b") {
             Write-Host "scoop bucket: $bucket (already added)"
             continue
         }
-        if ($DryRun) { Write-Host "would add scoop bucket: $bucket"; continue }
         Write-Host "Adding scoop bucket: $bucket" -ForegroundColor Cyan
         & scoop bucket add $bucket
     }
@@ -61,6 +77,12 @@ function Add-ScoopBuckets {
 
 function Install-ScoopPackages {
     param([string[]]$Packages)
+    if (-not $DryRun -and -not (Get-Command scoop -ErrorAction SilentlyContinue)) {
+        if ($Packages.Count -gt 0) {
+            Write-Warning "scoop not on PATH — skipping scoop packages"
+        }
+        return
+    }
     foreach ($pkg in $Packages) {
         if ($DryRun) { Write-Host "would scoop install: $pkg"; continue }
         Write-Host "scoop install: $pkg" -ForegroundColor Cyan
