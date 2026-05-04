@@ -119,10 +119,8 @@ if type cargo > /dev/null 2>&1; then
   . "$HOME/.cargo/env"
 fi
 
-# ghr — repository manager. Shell extension provides `ghr cd <pattern>`.
-if command -v ghr > /dev/null 2>&1; then
-  eval "$(ghr shell bash)"
-fi
+# ghq — repository manager. brew install drops bash completion into
+# /opt/homebrew/share/bash-completion/completions/ghq automatically.
 
 # Shared bash/zsh snippets (e.g. cdb)
 for f in "$HOME"/.shell/*.sh; do

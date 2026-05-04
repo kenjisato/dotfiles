@@ -1,8 +1,8 @@
 setopt extended_glob
 
 # Run compinit *before* sourcing user snippets so they can rely on compdef
-# being defined. (Otherwise tools like ghr's bash completion would autoload
-# compinit themselves without the -i flag and trip the insecure-dirs prompt.)
+# being defined. (Otherwise tools that autoload bash compinit could trip the
+# insecure-dirs prompt without the -i flag.)
 if [[ -o interactive ]]; then
   autoload -Uz compinit
   zcomp_cache="${XDG_CACHE_HOME:-$HOME/.cache}/zsh"

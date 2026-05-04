@@ -1,1 +1,2 @@
-ghr
+# Cargo-installed Rust tools. One per line. Comments with #.
+# (Currently empty — kept for future additions.)

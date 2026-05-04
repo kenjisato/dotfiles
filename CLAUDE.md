@@ -75,7 +75,7 @@ The zsh config is layered:
 **`shell/zsh/.zsh/` load order:**
 - `00_aliases.zsh` — Aliases
 - `10_completion.zsh` — Extra completion paths
-- `20-fzf.zsh` — Ctrl+] jumps to ghq projects; provides `cdb` bookmark navigation
+- `20-fzf.zsh` — Ctrl+] jumps to ghq-managed repos via `ghq list -p` + fzf
 - `30_prompt.zsh` — Fallback prompt (skipped when starship is available)
 - `31_history.zsh` — History settings (1M entries)
 - `32_editors.zsh` — Sets nvim as EDITOR/GIT_EDITOR/SVN_EDITOR; aliases `vim` to `nvim`
@@ -88,7 +88,7 @@ The zsh config is layered:
 ## Key Paths
 
 - `GOPATH=$HOME/local`
-- `ghq.root=~/local/src`
+- ghq root: `~/ghq` (default; no env var or git config needed)
 - `VENVROOT=~/.envs`
 - `~/bin` is on PATH (managed by deploy)
 

@@ -1,6 +1,7 @@
 brew "bat"
 brew "fzf"
 brew "gh"
+brew "ghq"
 brew "kubernetes-cli"
 brew "neovim"
 brew "node"

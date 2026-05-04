@@ -1,12 +1,12 @@
 # etc/install.ps1 — Windows installer (public dotfiles).
 #
-# Installs scoop + scoop packages + winget packages declared under pkg/.
+# Installs winget packages declared under pkg/winget-packages*.txt.
 # Manifests with the .metal.txt suffix are applied only on bare-metal hosts;
 # Parallels VMs skip them because the host Mac already has those tools.
 #
 # Host detection:
 #   $Env:DOTFILES_HOST_PROFILE overrides everything (values: parallels|metal).
-#   Otherwise: presence of the prl_tools_service service => parallels.
+#   Otherwise: WMI Win32_ComputerSystem.Manufacturer/Model = *Parallels* => parallels.
 #
 # Usage:
 #   pwsh -File etc\install.ps1              # apply
@@ -21,15 +21,12 @@ $ErrorActionPreference = 'Stop'
 
 function Get-HostProfile {
     if ($Env:DOTFILES_HOST_PROFILE) { return $Env:DOTFILES_HOST_PROFILE }
-    # WMI Manufacturer / Model is stable across Parallels Desktop versions.
     try {
         $cs = Get-CimInstance Win32_ComputerSystem -ErrorAction Stop
         if ($cs.Manufacturer -like '*Parallels*' -or $cs.Model -like '*Parallels*') {
             return 'parallels'
         }
     } catch {}
-    # Fallback: any prl_* service (newer Parallels versions sometimes rename
-    # prl_tools_service).
     if (Get-Service -Name 'prl*' -ErrorAction SilentlyContinue) { return 'parallels' }
     return 'metal'
 }
@@ -40,82 +37,6 @@ function Read-PackageList {
     Get-Content $Path | ForEach-Object {
         $line = $_.Trim()
         if ($line -and -not $line.StartsWith('#')) { $line }
-    }
-}
-
-function Install-Scoop {
-    if (Get-Command scoop -ErrorAction SilentlyContinue) {
-        Write-Host "scoop: already installed"
-        return
-    }
-    if ($DryRun) { Write-Host "would install scoop"; return }
-    Write-Host "Installing scoop..." -ForegroundColor Cyan
-    Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
-    Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
-}
-
-function Read-BucketList {
-    param([string]$Path)
-    if (-not (Test-Path $Path)) { return @() }
-    Get-Content $Path | ForEach-Object {
-        $line = $_.Trim()
-        if ($line -and -not $line.StartsWith('#')) {
-            $parts = $line -split '\s+', 2
-            [pscustomobject]@{
-                Name = $parts[0]
-                Url  = if ($parts.Count -gt 1) { $parts[1] } else { $null }
-            }
-        }
-    }
-}
-
-function Add-ScoopBuckets {
-    param([object[]]$Buckets)
-    if ($DryRun) {
-        foreach ($b in $Buckets) {
-            $tag = if ($b.Url) { " ($($b.Url))" } else { '' }
-            Write-Host "would ensure scoop bucket: $($b.Name)$tag"
-        }
-        return
-    }
-    if (-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
-        Write-Warning "scoop not on PATH — skipping bucket setup"
-        return
-    }
-    $existing = (& scoop bucket list 2>$null | Out-String)
-    foreach ($b in $Buckets) {
-        if ($existing -match "(?m)^\s*$($b.Name)\b") {
-            Write-Host "scoop bucket: $($b.Name) (already added)"
-            continue
-        }
-        Write-Host "Adding scoop bucket: $($b.Name)" -ForegroundColor Cyan
-        if ($b.Url) { & scoop bucket add $b.Name $b.Url }
-        else        { & scoop bucket add $b.Name }
-    }
-}
-
-function Install-ScoopPackages {
-    param([string[]]$Packages)
-    if (-not $DryRun -and -not (Get-Command scoop -ErrorAction SilentlyContinue)) {
-        if ($Packages.Count -gt 0) {
-            Write-Warning "scoop not on PATH — skipping scoop packages"
-        }
-        return
-    }
-    foreach ($pkg in $Packages) {
-        if ($DryRun) { Write-Host "would scoop install: $pkg"; continue }
-        Write-Host "scoop install: $pkg" -ForegroundColor Cyan
-        # try/catch isolates errors thrown inside scoop's own scripts (e.g.
-        # post-install cleanup hitting a locked temp file) so one package's
-        # hiccup doesn't abort the whole run.
-        try {
-            & scoop install $pkg
-            if ($LASTEXITCODE -ne 0) {
-                Write-Warning "scoop install returned exit $LASTEXITCODE for $pkg — continuing"
-            }
-        } catch {
-            Write-Warning "scoop install threw for $pkg ($_) — continuing"
-        }
     }
 }
 
@@ -147,20 +68,11 @@ Write-Host "Host profile: $hostProfile"
 if ($DryRun) { Write-Host "(dry-run — no changes will be made)" -ForegroundColor Yellow }
 Write-Host ""
 
-Install-Scoop
-$buckets = Read-BucketList (Join-Path $Dotfiles 'pkg\scoop-buckets.txt')
-Add-ScoopBuckets -Buckets $buckets
-
-$scoopCommon  = Read-PackageList (Join-Path $Dotfiles 'pkg\scoop-packages.txt')
 $wingetCommon = Read-PackageList (Join-Path $Dotfiles 'pkg\winget-packages.txt')
-
-Install-ScoopPackages  $scoopCommon
 Install-WingetPackages $wingetCommon
 
 if ($hostProfile -eq 'metal') {
-    $scoopMetal  = Read-PackageList (Join-Path $Dotfiles 'pkg\scoop-packages.metal.txt')
     $wingetMetal = Read-PackageList (Join-Path $Dotfiles 'pkg\winget-packages.metal.txt')
-    Install-ScoopPackages  $scoopMetal
     Install-WingetPackages $wingetMetal
 } else {
     Write-Host ""
@@ -170,4 +82,3 @@ if ($hostProfile -eq 'metal') {
 
 Write-Host ""
 Write-Host "Install complete!" -ForegroundColor Green
-Write-Host "Open a new PowerShell session so scoop's PATH updates take effect."

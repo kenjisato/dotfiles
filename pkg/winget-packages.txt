@@ -2,5 +2,8 @@
 Git.Git
 GitHub.cli
 GitHub.GitHubDesktop
+junegunn.fzf
 Microsoft.PowerShell
 Microsoft.VisualStudioCode
+Starship.Starship
+x-motemen.ghq

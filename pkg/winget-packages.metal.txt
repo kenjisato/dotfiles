@@ -1,4 +1,10 @@
 # winget packages installed only on bare-metal Windows.
 Google.Chrome
+JohnMacFarlane.Pandoc
+Kubernetes.kubectl
+Neovim.Neovim
 OpenJS.NodeJS
 RedHat.Podman
+sharkdp.bat
+Typst.Typst
+# tlrc is not on winget; install separately with `cargo install tlrc` if needed.
