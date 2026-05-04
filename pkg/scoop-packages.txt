@@ -5,4 +5,4 @@ fzf
 starship
 neovim
 tree
-HackGen-NF
+CascadiaCode-NF
