@@ -1,0 +1,6 @@
+# winget packages installed on all Windows hosts (Parallels VM included).
+Git.Git
+GitHub.cli
+GitHub.GitHubDesktop
+Microsoft.PowerShell
+Microsoft.VisualStudioCode

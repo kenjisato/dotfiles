@@ -52,9 +52,17 @@ brew bundle --file=pkg/Brewfile   # uses Linuxbrew; cask entries auto-skipped
 ```powershell
 git clone https://github.com/kenjisato/dotfiles.git $HOME\dotfiles
 cd $HOME\dotfiles
-pwsh -File etc\deploy.ps1 -DryRun   # preview
-pwsh -File etc\deploy.ps1            # apply
+pwsh -File etc\install.ps1 -DryRun  # preview package install
+pwsh -File etc\install.ps1          # scoop + winget packages
+pwsh -File etc\deploy.ps1 -DryRun   # preview symlinks
+pwsh -File etc\deploy.ps1           # apply symlinks
 ```
+
+`etc/install.ps1` bootstraps scoop, adds the `extras` and `nerd-fonts`
+buckets, and installs everything declared under `pkg/scoop-packages*.txt` and
+`pkg/winget-packages*.txt`. Manifests with the `.metal.txt` suffix are
+skipped on Parallels VMs (detected via the `prl_tools_service` service);
+override with `$Env:DOTFILES_HOST_PROFILE = 'metal'` to force.
 
 Symlink creation requires either an elevated shell (Run as Administrator) or
 **Developer Mode** enabled (Settings → For developers → Developer Mode = ON).
@@ -89,6 +97,8 @@ but it's opt-in.
 | [xdg-config/](xdg-config/) | Per-app dirs symlinked into `~/.config/<app>` (NOT the whole `.config`) |
 | [bin/](bin/) | Scripts symlinked into `~/bin`, split by OS |
 | [pkg/Brewfile](pkg/Brewfile) | Homebrew manifest |
+| [pkg/scoop-packages*.txt](pkg/) | scoop manifest (Windows). `.metal.txt` for bare-metal-only |
+| [pkg/winget-packages*.txt](pkg/) | winget manifest (Windows). `.metal.txt` for bare-metal-only |
 | [etc/](etc/) | Setup scripts |
 
 ## Key features

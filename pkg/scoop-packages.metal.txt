@@ -1,0 +1,7 @@
+# scoop packages installed only on bare-metal Windows.
+# Skipped on Parallels VMs, where the host Mac already has these.
+bat
+kubectl
+pandoc
+tlrc
+typst

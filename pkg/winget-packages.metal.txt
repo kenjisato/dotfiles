@@ -1,0 +1,4 @@
+# winget packages installed only on bare-metal Windows.
+Google.Chrome
+OpenJS.NodeJS
+RedHat.Podman
