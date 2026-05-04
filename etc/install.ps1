@@ -95,5 +95,27 @@ if (Get-Command claude -ErrorAction SilentlyContinue) {
     }
 }
 
+# Install Windows fonts declared in pkg/windows-fonts.txt
+$fontsScript = Join-Path $PSScriptRoot 'install-windows-fonts.ps1'
+if (Test-Path $fontsScript) {
+    Write-Host ""
+    try {
+        & $fontsScript @PSBoundParameters
+    } catch {
+        Write-Warning "install-windows-fonts failed ($_) — continuing"
+    }
+}
+
+# Apply Windows Terminal overlay (xdg-config/windows/windows-terminal/overlay.json)
+$wtScript = Join-Path $PSScriptRoot 'wt-apply-settings.ps1'
+if (Test-Path $wtScript) {
+    Write-Host ""
+    try {
+        & $wtScript @PSBoundParameters
+    } catch {
+        Write-Warning "wt-apply-settings failed ($_) — continuing"
+    }
+}
+
 Write-Host ""
 Write-Host "Install complete!" -ForegroundColor Green

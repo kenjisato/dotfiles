@@ -1,0 +1,10 @@
+# Fonts installed on Windows by etc/install-windows-fonts.ps1.
+# Format: <github-owner/repo>:<asset-name-glob>:<font-name-glob>
+#   asset-name-glob — matched against release asset names (latest release)
+#   font-name-glob  — matched against *.ttf entries inside the asset zip
+#
+# The script fetches the latest release via the GitHub API, downloads the
+# matching asset, extracts TTFs matching the font glob, and registers them
+# per-user in HKCU (no admin / Developer Mode required for fonts).
+
+yuru7/HackGen:HackGen_NF_v*.zip:HackGenConsoleNF-*.ttf
