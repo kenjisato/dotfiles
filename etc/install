@@ -64,5 +64,13 @@ if [ -f "$DOTFILES/pkg/cargo-tools.txt" ]; then
   done < "$DOTFILES/pkg/cargo-tools.txt"
 fi
 
+# Install Claude Code via official native installer
+if command -v claude > /dev/null 2>&1; then
+  echo "Claude Code is already installed."
+else
+  echo "Installing Claude Code..."
+  curl -fsSL https://claude.ai/install.sh | bash
+fi
+
 echo "$(tput setaf 2)Install complete!$(tput sgr0)"
 echo "Please log out and log back in for the shell change to take effect."

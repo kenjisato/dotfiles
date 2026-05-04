@@ -80,5 +80,20 @@ if ($hostProfile -eq 'metal') {
     Write-Host "Override with: `$Env:DOTFILES_HOST_PROFILE = 'metal'"
 }
 
+# Install Claude Code via official native installer
+Write-Host ""
+if (Get-Command claude -ErrorAction SilentlyContinue) {
+    Write-Host "Claude Code is already installed." -ForegroundColor DarkGray
+} elseif ($DryRun) {
+    Write-Host "would install Claude Code via native installer"
+} else {
+    Write-Host "Installing Claude Code..." -ForegroundColor Cyan
+    try {
+        Invoke-RestMethod https://claude.ai/install.ps1 | Invoke-Expression
+    } catch {
+        Write-Warning "Claude Code install failed ($_) — continuing"
+    }
+}
+
 Write-Host ""
 Write-Host "Install complete!" -ForegroundColor Green
