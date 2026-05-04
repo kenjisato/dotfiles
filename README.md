@@ -97,6 +97,7 @@ but it's opt-in.
 | [xdg-config/](xdg-config/) | Per-app dirs symlinked into `~/.config/<app>` (NOT the whole `.config`) |
 | [bin/](bin/) | Scripts symlinked into `~/bin`, split by OS |
 | [pkg/Brewfile](pkg/Brewfile) | Homebrew manifest |
+| [pkg/scoop-buckets.txt](pkg/scoop-buckets.txt) | scoop bucket list (Windows). `<name>` or `<name> <url>` for third-party |
 | [pkg/scoop-packages*.txt](pkg/) | scoop manifest (Windows). `.metal.txt` for bare-metal-only |
 | [pkg/winget-packages*.txt](pkg/) | winget manifest (Windows). `.metal.txt` for bare-metal-only |
 | [etc/](etc/) | Setup scripts |

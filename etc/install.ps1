@@ -54,10 +54,28 @@ function Install-Scoop {
     Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
 }
 
+function Read-BucketList {
+    param([string]$Path)
+    if (-not (Test-Path $Path)) { return @() }
+    Get-Content $Path | ForEach-Object {
+        $line = $_.Trim()
+        if ($line -and -not $line.StartsWith('#')) {
+            $parts = $line -split '\s+', 2
+            [pscustomobject]@{
+                Name = $parts[0]
+                Url  = if ($parts.Count -gt 1) { $parts[1] } else { $null }
+            }
+        }
+    }
+}
+
 function Add-ScoopBuckets {
-    param([string[]]$Buckets)
+    param([object[]]$Buckets)
     if ($DryRun) {
-        foreach ($bucket in $Buckets) { Write-Host "would ensure scoop bucket: $bucket" }
+        foreach ($b in $Buckets) {
+            $tag = if ($b.Url) { " ($($b.Url))" } else { '' }
+            Write-Host "would ensure scoop bucket: $($b.Name)$tag"
+        }
         return
     }
     if (-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
@@ -65,13 +83,14 @@ function Add-ScoopBuckets {
         return
     }
     $existing = (& scoop bucket list 2>$null | Out-String)
-    foreach ($bucket in $Buckets) {
-        if ($existing -match "(?m)^\s*$bucket\b") {
-            Write-Host "scoop bucket: $bucket (already added)"
+    foreach ($b in $Buckets) {
+        if ($existing -match "(?m)^\s*$($b.Name)\b") {
+            Write-Host "scoop bucket: $($b.Name) (already added)"
             continue
         }
-        Write-Host "Adding scoop bucket: $bucket" -ForegroundColor Cyan
-        & scoop bucket add $bucket
+        Write-Host "Adding scoop bucket: $($b.Name)" -ForegroundColor Cyan
+        if ($b.Url) { & scoop bucket add $b.Name $b.Url }
+        else        { & scoop bucket add $b.Name }
     }
 }
 
@@ -118,7 +137,8 @@ if ($DryRun) { Write-Host "(dry-run — no changes will be made)" -ForegroundCol
 Write-Host ""
 
 Install-Scoop
-Add-ScoopBuckets -Buckets @('extras', 'nerd-fonts')
+$buckets = Read-BucketList (Join-Path $Dotfiles 'pkg\scoop-buckets.txt')
+Add-ScoopBuckets -Buckets $buckets
 
 $scoopCommon  = Read-PackageList (Join-Path $Dotfiles 'pkg\scoop-packages.txt')
 $wingetCommon = Read-PackageList (Join-Path $Dotfiles 'pkg\winget-packages.txt')
