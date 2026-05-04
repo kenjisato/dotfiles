@@ -63,6 +63,46 @@ function Install-FontFile {
     Write-Host "  installed: $name" -ForegroundColor Green
 }
 
+function Show-RegisteredFonts {
+    # Prints a table of fonts registered under HKCU and located in $FontsDir,
+    # with each TTF's internal family name (the value to use as 'face' in
+    # Windows Terminal / starship / etc.). Helps avoid the cycle of "the face
+    # name in my config doesn't match what Windows actually has".
+    if (-not (Test-Path $RegPath)) { return }
+    try { Add-Type -AssemblyName PresentationCore -ErrorAction Stop } catch { return }
+
+    $entries = Get-ItemProperty -Path $RegPath -ErrorAction SilentlyContinue
+    if (-not $entries) { return }
+
+    $rows = $entries.PSObject.Properties |
+        Where-Object {
+            -not $_.Name.StartsWith('PS') -and
+            $_.Value -is [string] -and
+            $_.Value.StartsWith($FontsDir, [StringComparison]::OrdinalIgnoreCase)
+        } |
+        Sort-Object Name |
+        ForEach-Object {
+            $path = $_.Value
+            $family = '?'
+            if (Test-Path $path) {
+                try {
+                    $gtf = New-Object Windows.Media.GlyphTypeface ($path)
+                    $family = ($gtf.Win32FamilyNames.Values | Select-Object -First 1)
+                } catch { }
+            }
+            [pscustomobject]@{
+                File   = Split-Path -Leaf $path
+                Family = $family
+            }
+        }
+
+    if ($rows) {
+        Write-Host ""
+        Write-Host "Registered per-user fonts (use 'Family' as the 'face' value in WT / starship):" -ForegroundColor Cyan
+        $rows | Format-Table -AutoSize | Out-Host
+    }
+}
+
 function Install-FontFromGitHub {
     param(
         [string]$Repo,
@@ -118,6 +158,8 @@ Get-Content $Manifest | ForEach-Object {
     }
     Install-FontFromGitHub -Repo $parts[0] -AssetGlob $parts[1] -FontGlob $parts[2]
 }
+
+Show-RegisteredFonts
 
 Write-Host ""
 Write-Host "Note: newly installed fonts may not appear until apps are restarted." -ForegroundColor DarkGray
