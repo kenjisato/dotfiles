@@ -41,6 +41,8 @@ if ($Private) {
 if ($DryRun) { Write-Host "(dry-run — no changes will be made)" -ForegroundColor Yellow }
 Write-Host ""
 
+$script:Skipped = [System.Collections.Generic.List[string]]::new()
+
 function New-DotfileLink {
     param([string]$Source, [string]$Target)
 
@@ -49,7 +51,8 @@ function New-DotfileLink {
     if (Test-Path $Target) {
         $item = Get-Item $Target -Force
         if (-not ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
-            Write-Host "skip $Target (exists and is not a symlink)" -ForegroundColor DarkGray
+            Write-Host "skip $Target (exists and is not a symlink)" -ForegroundColor Yellow
+            $script:Skipped.Add($Target)
             return
         }
     }
@@ -84,6 +87,15 @@ if ($Private) {
     Write-Host ""
     Write-Host "--- private overlay ---"
     Invoke-DeployTree $Private
+}
+
+if ($script:Skipped.Count -gt 0) {
+    Write-Host ""
+    Write-Host "Skipped $($script:Skipped.Count) target(s) — existing non-symlink files were not overwritten:" -ForegroundColor Yellow
+    foreach ($p in $script:Skipped) {
+        Write-Host "  $p" -ForegroundColor Yellow
+    }
+    Write-Host "Remove these manually (Remove-Item <path>) and re-run deploy if you want them linked." -ForegroundColor DarkGray
 }
 
 Write-Host ""

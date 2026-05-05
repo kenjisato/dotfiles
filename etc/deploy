@@ -81,6 +81,8 @@ done
 
 mkdir -p "$HOME/.config" "$HOME/bin"
 
+SKIPPED=()
+
 link() {
   local src="$1" dst="$2"
   [ -e "$src" ] || return 0
@@ -89,7 +91,8 @@ link() {
     *.example|*.example.*) return 0 ;;
   esac
   if [ -e "$dst" ] && [ ! -L "$dst" ]; then
-    echo "skip $dst (exists and is not a symlink)"
+    echo "$(tput setaf 3 2>/dev/null)skip $dst (exists and is not a symlink)$(tput sgr0 2>/dev/null)"
+    SKIPPED+=("$dst")
     return
   fi
   if [ $DRY_RUN -eq 1 ]; then
@@ -148,6 +151,15 @@ if [ -n "$PRIVATE" ]; then
   echo
   echo "--- private overlay ---"
   deploy_tree "$PRIVATE"
+fi
+
+if [ ${#SKIPPED[@]} -gt 0 ]; then
+  echo
+  echo "$(tput setaf 3 2>/dev/null)Skipped ${#SKIPPED[@]} target(s) — existing non-symlink files were not overwritten:$(tput sgr0 2>/dev/null)"
+  for path in "${SKIPPED[@]}"; do
+    echo "  $path"
+  done
+  echo "Remove these manually (rm <path>) and re-run deploy if you want them linked."
 fi
 
 echo
