@@ -41,6 +41,40 @@ if ($Private) {
 if ($DryRun) { Write-Host "(dry-run — no changes will be made)" -ForegroundColor Yellow }
 Write-Host ""
 
+function Test-CanCreateSymlinks {
+    # Symlink creation requires either an elevated session or Developer Mode.
+    $isAdmin = ([Security.Principal.WindowsPrincipal]::new(
+        [Security.Principal.WindowsIdentity]::GetCurrent()
+    )).IsInRole([Security.Principal.WindowsBuiltinRole]::Administrator)
+    if ($isAdmin) { return $true }
+
+    try {
+        $devMode = Get-ItemPropertyValue `
+            -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock' `
+            -Name 'AllowDevelopmentWithoutDevLicense' `
+            -ErrorAction Stop
+        return $devMode -eq 1
+    } catch {
+        return $false
+    }
+}
+
+if (-not (Test-CanCreateSymlinks)) {
+    Write-Host "Cannot create symlinks in this session." -ForegroundColor Red
+    Write-Host "Either enable Developer Mode, or re-run from an elevated PowerShell." -ForegroundColor Red
+    Write-Host ""
+    Write-Host "Enable Developer Mode (recommended — persists across reboots):"
+    Write-Host "  - GUI: Settings -> System -> For developers -> Developer Mode = ON" -ForegroundColor DarkGray
+    Write-Host "  - or in an elevated PowerShell, run once:" -ForegroundColor DarkGray
+    Write-Host "      New-ItemProperty ``"
+    Write-Host "          -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock' ``"
+    Write-Host "          -Name 'AllowDevelopmentWithoutDevLicense' ``"
+    Write-Host "          -Value 1 -PropertyType DWORD -Force"
+    Write-Host ""
+    Write-Host "Then open a fresh (non-elevated) PowerShell session and re-run this script."
+    exit 1
+}
+
 $script:Skipped = [System.Collections.Generic.List[string]]::new()
 
 function New-DotfileLink {
