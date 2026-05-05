@@ -30,10 +30,15 @@ if (Get-Module -ListAvailable -Name PSReadLine) {
     }
 }
 
-# Add ~/bin to PATH (matches the bash/zsh setup).
-$binDir = Join-Path $HOME 'bin'
-if ((Test-Path $binDir) -and ($Env:PATH -notlike "*$binDir*")) {
-    $Env:PATH = "$binDir;$Env:PATH"
+# Add ~/bin and ~/.local/bin to PATH (matches the bash/zsh setup;
+# Claude Code's native installer places claude.exe under ~/.local/bin).
+foreach ($dir in @(
+    (Join-Path $HOME 'bin'),
+    (Join-Path $HOME '.local\bin')
+)) {
+    if ((Test-Path $dir) -and ($Env:PATH -notlike "*$dir*")) {
+        $Env:PATH = "$dir;$Env:PATH"
+    }
 }
 
 # Editor preference — Neovim, then VS Code.
