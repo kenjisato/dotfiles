@@ -49,7 +49,16 @@ function Install-FontFile {
     $name    = Split-Path -Leaf $Src
     $dst     = Join-Path $FontsDir $name
     $regName = Get-FontRegistryName $name
-    $existing = (Get-ItemProperty -Path $RegPath -Name $regName -ErrorAction SilentlyContinue).$regName
+
+    # On first install the registry value doesn't exist yet. Use
+    # Get-ItemPropertyValue + try/catch instead of (Get-ItemProperty ...).$X —
+    # the latter raises "property cannot be found on this object" when the
+    # value is missing, which $ErrorActionPreference='Stop' then turns into
+    # a terminating error.
+    $existing = try {
+        Get-ItemPropertyValue -Path $RegPath -Name $regName -ErrorAction Stop
+    } catch { $null }
+
     if ((Test-Path $dst) -and ($existing -eq $dst)) {
         Write-Host "  already installed: $name" -ForegroundColor DarkGray
         return
