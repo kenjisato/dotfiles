@@ -2,7 +2,8 @@
   "profiles": {
     "defaults": {
       "font": {
-        "face": "HackGen Console NF"
+        "face": "HackGen Console NF",
+        "size": 10
       }
     }
   }
