@@ -40,10 +40,68 @@ function Read-PackageList {
     }
 }
 
+# Squirrel-based installers (GitHub Desktop, ...) auto-update outside winget,
+# so winget always re-runs their installer. The installer then tries to wipe
+# the existing app directory and fails if the app is running. Stop the process
+# first so reinstall can proceed.
+$PreInstallStopProcess = @{
+    'GitHub.GitHubDesktop' = 'GitHubDesktop'
+}
+
+$script:WingetInstalledCache = $null
+
+function Get-WingetInstalledIds {
+    if ($null -ne $script:WingetInstalledCache) { return $script:WingetInstalledCache }
+    $ids = @{}
+    $tmp = New-TemporaryFile
+    try {
+        & winget export --output $tmp.FullName --disable-interactivity `
+            --accept-source-agreements 2>&1 | Out-Null
+        if (Test-Path $tmp.FullName) {
+            $data = Get-Content -Raw -Encoding UTF8 $tmp.FullName | ConvertFrom-Json
+            foreach ($src in @($data.Sources)) {
+                foreach ($pkg in @($src.Packages)) {
+                    $ids[$pkg.PackageIdentifier] = $true
+                }
+            }
+        }
+    } catch {
+        Write-Warning "winget export failed ($_) — falling back to per-package check"
+    } finally {
+        Remove-Item $tmp.FullName -ErrorAction SilentlyContinue
+    }
+    $script:WingetInstalledCache = $ids
+    return $ids
+}
+
+function Test-WingetInstalled {
+    param([string]$Id)
+    return (Get-WingetInstalledIds).ContainsKey($Id)
+}
+
 function Install-WingetPackages {
     param([string[]]$Packages)
     foreach ($pkg in $Packages) {
-        if ($DryRun) { Write-Host "would winget install: $pkg"; continue }
+        if ($DryRun) {
+            if (Test-WingetInstalled $pkg) {
+                Write-Host "would skip (already installed): $pkg"
+            } else {
+                Write-Host "would winget install: $pkg"
+            }
+            continue
+        }
+        if (Test-WingetInstalled $pkg) {
+            Write-Host "already installed: $pkg" -ForegroundColor DarkGray
+            continue
+        }
+        if ($PreInstallStopProcess.ContainsKey($pkg)) {
+            $procName = $PreInstallStopProcess[$pkg]
+            $running = Get-Process -Name $procName -ErrorAction SilentlyContinue
+            if ($running) {
+                Write-Host "stopping $procName before reinstalling $pkg" -ForegroundColor DarkGray
+                $running | Stop-Process -Force -ErrorAction SilentlyContinue
+            }
+        }
         Write-Host "winget install: $pkg" -ForegroundColor Cyan
         try {
             & winget install --id $pkg --exact `
