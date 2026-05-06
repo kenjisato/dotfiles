@@ -1,10 +1,14 @@
 # Fonts installed on Windows by etc/install-windows-fonts.ps1.
 # Format: <github-owner/repo>:<asset-name-glob>:<font-name-glob>
-#   asset-name-glob — matched against release asset names (latest release)
-#   font-name-glob  — matched against *.ttf entries inside the asset zip
+#   asset-name-glob — matched against release asset names (latest release).
+#                     Use the literal value `@tag` for repos with no releases —
+#                     the script pulls the latest tag's archive zip instead.
+#   font-name-glob  — matched against .ttf / .otf entries inside the archive
 #
-# The script fetches the latest release via the GitHub API, downloads the
-# matching asset, extracts TTFs matching the font glob, and registers them
-# per-user in HKCU (no admin / Developer Mode required for fonts).
+# The script fetches the latest release (or tag) via the GitHub API, downloads
+# the matching archive, extracts fonts matching the font glob, and registers
+# them per-user in HKCU (no admin / Developer Mode required for fonts).
 
 yuru7/HackGen:HackGen_NF_v*.zip:HackGenConsoleNF-*.ttf
+adobe-fonts/source-sans:OTF-source-sans-*.zip:SourceSans3-*.otf
+trueroad/HaranoAjiFonts:@tag:HaranoAji*-*.otf

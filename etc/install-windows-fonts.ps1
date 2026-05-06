@@ -37,11 +37,18 @@ if (-not $DryRun) {
 
 function Get-FontRegistryName {
     # Best-effort registry display name derived from filename.
-    # The actual font face exposed to apps comes from the TTF's internal
+    # The actual font face exposed to apps comes from the file's internal
     # 'name' table — this string just needs to be unique within the registry.
+    # Suffix follows the convention Windows uses for double-click installs:
+    # .ttf -> (TrueType), .otf -> (OpenType).
     param([string]$FileName)
-    $base = [IO.Path]::GetFileNameWithoutExtension($FileName)
-    return ($base -replace '-', ' ') + ' (TrueType)'
+    $base   = [IO.Path]::GetFileNameWithoutExtension($FileName)
+    $suffix = if ([IO.Path]::GetExtension($FileName).ToLowerInvariant() -eq '.otf') {
+        '(OpenType)'
+    } else {
+        '(TrueType)'
+    }
+    return ($base -replace '-', ' ') + " $suffix"
 }
 
 function Install-FontFile {
@@ -112,6 +119,14 @@ function Show-RegisteredFonts {
     }
 }
 
+function Get-FontFilesFromArchive {
+    param([string]$ArchiveDir, [string]$FontGlob)
+    Get-ChildItem -Path $ArchiveDir -Recurse | Where-Object {
+        $_.Name -like $FontGlob -and
+        ($_.Extension.ToLowerInvariant() -in '.ttf', '.otf')
+    }
+}
+
 function Install-FontFromGitHub {
     param(
         [string]$Repo,
@@ -144,12 +159,58 @@ function Install-FontFromGitHub {
         Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $zipPath -UseBasicParsing
         Expand-Archive -Path $zipPath -DestinationPath $tmpDir -Force
 
-        $ttfs = Get-ChildItem -Path $tmpDir -Recurse -Filter '*.ttf' | Where-Object { $_.Name -like $FontGlob }
-        if (-not $ttfs) {
-            Write-Warning "no TTFs matching '$FontGlob' inside $($asset.name) — skipping"
+        $fonts = Get-FontFilesFromArchive -ArchiveDir $tmpDir -FontGlob $FontGlob
+        if (-not $fonts) {
+            Write-Warning "no font files matching '$FontGlob' inside $($asset.name) — skipping"
             return
         }
-        foreach ($ttf in $ttfs) { Install-FontFile $ttf.FullName }
+        foreach ($f in $fonts) { Install-FontFile $f.FullName }
+    } finally {
+        Remove-Item $tmpDir -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+# Some font repos (e.g. trueroad/HaranoAjiFonts) ship via git tags only —
+# no release assets. For those we pull the auto-generated tag archive zip
+# from `archive/refs/tags/<tag>.zip`.
+function Install-FontFromGitHubTag {
+    param(
+        [string]$Repo,
+        [string]$FontGlob
+    )
+    Write-Host "Source: $Repo  tag-archive  font=$FontGlob" -ForegroundColor Cyan
+    $api = "https://api.github.com/repos/$Repo/tags?per_page=1"
+    try {
+        $tags = Invoke-RestMethod $api -Headers @{ 'User-Agent' = 'dotfiles-installer' }
+    } catch {
+        Write-Warning "GitHub API failed for $Repo ($_) — skipping"
+        return
+    }
+    if (-not $tags -or $tags.Count -eq 0) {
+        Write-Warning "no tags in $Repo — skipping"
+        return
+    }
+    $tag = $tags[0].name
+    $url = "https://github.com/$Repo/archive/refs/tags/$tag.zip"
+    Write-Host "  tag $tag -> archive zip"
+
+    if ($DryRun) {
+        Write-Host "  would download $url and install fonts matching '$FontGlob'"
+        return
+    }
+
+    $tmpDir = New-Item -ItemType Directory -Path (Join-Path $Env:TEMP "windows-fonts-$([guid]::NewGuid().ToString('N'))")
+    try {
+        $zipPath = Join-Path $tmpDir "$tag.zip"
+        Invoke-WebRequest -Uri $url -OutFile $zipPath -UseBasicParsing
+        Expand-Archive -Path $zipPath -DestinationPath $tmpDir -Force
+
+        $fonts = Get-FontFilesFromArchive -ArchiveDir $tmpDir -FontGlob $FontGlob
+        if (-not $fonts) {
+            Write-Warning "no font files matching '$FontGlob' inside $tag — skipping"
+            return
+        }
+        foreach ($f in $fonts) { Install-FontFile $f.FullName }
     } finally {
         Remove-Item $tmpDir -Recurse -Force -ErrorAction SilentlyContinue
     }
@@ -165,7 +226,11 @@ Get-Content $Manifest | ForEach-Object {
         Write-Warning "invalid manifest line (expected owner/repo:asset-glob:font-glob): $line"
         return
     }
-    Install-FontFromGitHub -Repo $parts[0] -AssetGlob $parts[1] -FontGlob $parts[2]
+    if ($parts[1] -eq '@tag') {
+        Install-FontFromGitHubTag -Repo $parts[0] -FontGlob $parts[2]
+    } else {
+        Install-FontFromGitHub -Repo $parts[0] -AssetGlob $parts[1] -FontGlob $parts[2]
+    }
 }
 
 Show-RegisteredFonts
