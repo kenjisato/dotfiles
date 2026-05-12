@@ -1,4 +1,5 @@
 # winget packages installed on all Windows hosts (Parallels VM included).
+Adobe.Acrobat.Reader.64-bit
 Git.Git
 GitHub.cli
 GitHub.GitHubDesktop
