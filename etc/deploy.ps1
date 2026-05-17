@@ -112,6 +112,12 @@ function Invoke-DeployTree {
     # home/common/* -> $HOME (the genuinely cross-platform dotfiles)
     New-DotfileLink (Join-Path $Root 'home\common\.vimrc') (Join-Path $HOME '.vimrc')
     New-DotfileLink (Join-Path $Root 'home\common\.vim')   (Join-Path $HOME '.vim')
+
+    # Global git hooks — same path as the bash deploy's xdg-config/common
+    # recursion produces on macOS/Linux. The bash hook script works under
+    # git-for-windows' MSYS shell.
+    New-DotfileLink (Join-Path $Root 'xdg-config\common\git\hooks\pre-commit') `
+                    (Join-Path $HOME '.config\git\hooks\pre-commit')
 }
 
 Write-Host "--- public ---"

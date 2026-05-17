@@ -3,6 +3,7 @@ Adobe.Acrobat.Reader.64-bit
 Git.Git
 GitHub.cli
 GitHub.GitHubDesktop
+gitleaks.gitleaks
 junegunn.fzf
 Microsoft.PowerShell
 Microsoft.VisualStudioCode

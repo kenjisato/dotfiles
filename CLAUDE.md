@@ -101,6 +101,10 @@ The zsh config is layered:
 - `VENVROOT=~/.envs`
 - `~/bin` is on PATH (managed by deploy)
 
+## Global git pre-commit (gitleaks)
+
+`etc/install` and `etc/install.ps1` set `git config --global core.hooksPath ~/.config/git/hooks`, and `etc/deploy{,.ps1}` symlink `xdg-config/common/git/hooks/pre-commit` into that directory. The result: every `git commit` on this machine scans the staged diff with gitleaks before allowing the commit. Bypass with `git commit --no-verify`; gitleaks itself can be silenced per-pattern via a repo-local `.gitleaks.toml`. CI should also scan on push as a backstop — pre-commit is a guard against *accidents*, not a security boundary.
+
 ## Cross-Platform Notes
 
 - Homebrew shellenv detection in `shell/zsh/.zprofile`: `/opt/homebrew` (Apple Silicon), `/usr/local` (Intel), `/home/linuxbrew/.linuxbrew` (Linux).

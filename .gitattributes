@@ -1,0 +1,6 @@
+# Git hook scripts must keep LF endings — a `#!/bin/sh\r` shebang fails on
+# Linux/macOS, and git-bash on Windows accepts LF without issue.
+xdg-config/common/git/hooks/** text eol=lf
+
+# Shell scripts in general — same reasoning.
+*.sh text eol=lf

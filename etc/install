@@ -72,5 +72,10 @@ else
   curl -fsSL https://claude.ai/install.sh | bash
 fi
 
+# Wire global git hooks at ~/.config/git/hooks (deployed from
+# xdg-config/common/git/hooks/). Idempotent — just sets the value.
+echo "Setting core.hooksPath -> ~/.config/git/hooks ..."
+git config --global core.hooksPath '~/.config/git/hooks'
+
 echo "$(tput setaf 2)Install complete!$(tput sgr0)"
 echo "Please log out and log back in for the shell change to take effect."

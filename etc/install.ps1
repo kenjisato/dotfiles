@@ -153,6 +153,16 @@ if (Get-Command claude -ErrorAction SilentlyContinue) {
     }
 }
 
+# Wire global git hooks at ~/.config/git/hooks (deployed from
+# xdg-config/common/git/hooks/). Idempotent — just sets the value.
+Write-Host ""
+if ($DryRun) {
+    Write-Host "would set git core.hooksPath -> ~/.config/git/hooks"
+} else {
+    Write-Host "Setting git core.hooksPath -> ~/.config/git/hooks ..." -ForegroundColor Cyan
+    & git config --global core.hooksPath '~/.config/git/hooks'
+}
+
 # Install Windows fonts declared in pkg/windows-fonts.txt
 $fontsScript = Join-Path $PSScriptRoot 'install-windows-fonts.ps1'
 if (Test-Path $fontsScript) {

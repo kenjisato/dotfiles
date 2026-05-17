@@ -1,0 +1,43 @@
+#!/bin/sh
+#
+# Global pre-commit hook installed via `git config --global core.hooksPath`.
+# Runs on every repo on this machine until/unless bypassed with --no-verify.
+#
+# Scans staged changes for secret-shaped strings via gitleaks. Not a
+# security boundary — bypass is trivial and CI should also scan on push.
+# This guard is here to catch *accidents* at commit time.
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+    echo "warning: gitleaks not on PATH — staged-secret scan skipped." >&2
+    echo "  install: brew install gitleaks  /  winget install gitleaks.gitleaks" >&2
+    exit 0
+fi
+
+gitleaks protect --staged --redact --no-banner
+rc=$?
+
+if [ "$rc" -eq 0 ]; then
+    exit 0
+fi
+
+if [ "$rc" -eq 1 ]; then
+    cat >&2 <<'EOF'
+
+Commit blocked: gitleaks found a secret-shaped string in staged changes
+(report above). Options:
+
+  1) Real secret:    unstage the file, scrub the value, re-add, commit.
+                     Rotate the credential — it's been on disk in the
+                     staging area.
+  2) False positive: add a rule to .gitleaks.toml in this repo (or the
+                     global config at ~/.config/gitleaks/gitleaks.toml)
+                     and commit it.
+  3) Emergency:      git commit --no-verify
+                     (use sparingly; CI should scan on push too.)
+
+EOF
+    exit 1
+fi
+
+echo "warning: gitleaks exited with code $rc — staged-secret scan skipped." >&2
+exit 0
