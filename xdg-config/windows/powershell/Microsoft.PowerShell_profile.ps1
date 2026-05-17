@@ -42,6 +42,15 @@ foreach ($dir in @(
     }
 }
 
+# Reload PATH from registry then re-apply this profile — refreshenv alone
+# would clobber the ~/bin / ~/.local/bin additions above.
+function Reload-Env {
+    $machine = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+    $user    = [Environment]::GetEnvironmentVariable('Path', 'User')
+    $env:Path = "$machine;$user"
+    . $PROFILE
+}
+
 # Editor preference — Neovim, then VS Code.
 if (Get-Command nvim -ErrorAction SilentlyContinue) {
     $Env:EDITOR = 'nvim'
