@@ -4,9 +4,12 @@
 # (typically $HOME\Documents\PowerShell\Microsoft.PowerShell_profile.ps1).
 
 # UTF-8 everywhere — fixes mojibake for Japanese filenames and command output.
-$OutputEncoding = [System.Text.Encoding]::UTF8
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-[Console]::InputEncoding  = [System.Text.Encoding]::UTF8
+# Use UTF8Encoding($false) (no BOM); [Encoding]::UTF8 emits a BOM that gets
+# injected at the head of pipes to native commands.
+$utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+$OutputEncoding = $utf8NoBom
+[Console]::OutputEncoding = $utf8NoBom
+[Console]::InputEncoding  = $utf8NoBom
 $Env:PYTHONUTF8 = '1'
 
 # PSReadLine — emacs-ish keys + history search via up/down arrows.
