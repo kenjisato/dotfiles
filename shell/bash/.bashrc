@@ -127,3 +127,13 @@ for f in "$HOME"/.shell/*.sh; do
     [ -r "$f" ] && . "$f"
 done
 unset f
+
+# Machine-local snippets (untracked; not symlinked from the repo). Use this
+# for installer-managed init (juliaup, asdf, etc.) that shouldn't land in
+# the tracked rc.
+if [ -d "$HOME/.shell.local" ]; then
+    for f in "$HOME"/.shell.local/*.sh; do
+        [ -r "$f" ] && . "$f"
+    done
+    unset f
+fi

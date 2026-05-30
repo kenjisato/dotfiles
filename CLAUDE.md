@@ -94,6 +94,8 @@ The zsh config is layered:
 `~/.shell/*.sh` is sourced by both shells at the end of their rc:
 - `cdb.sh` — bookmark navigation (reads `~/.config/cdmarks.tsv` + `~/.config/cdmarks.local.tsv`)
 
+`~/.shell.local/*.sh` is sourced immediately after, guarded by `[ -d ~/.shell.local ]`. This directory is **untracked** and per-machine — drop installer-managed init here (juliaup, asdf, etc.) so it doesn't land in the symlinked, tracked rc files.
+
 ## Key Paths
 
 - `GOPATH=$HOME/local`
