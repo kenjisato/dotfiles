@@ -5,11 +5,14 @@
 #   xdg-config/windows/powershell/Microsoft.PowerShell_profile.ps1  ->  $PROFILE
 #   home/common/.vimrc                                              ->  $HOME/.vimrc
 #   home/common/.vim/                                               ->  $HOME/.vim/
+#   home/windows/.psmux.conf                                        ->  $HOME/.psmux.conf
 #
 # The PowerShell deploy is intentionally narrower than the bash side — apps
 # without a clean Windows XDG story (gh, git, rstudio, ...) are skipped.
 # .tmux.conf isn't linked: native Windows has no tmux, and WSL has its own
 # filesystem, so a Windows-side symlink doesn't reach any tmux runtime.
+# psmux (PowerShell-native tmux alternative) gets its own .psmux.conf since
+# psmux reads .psmux.conf first and the shared .tmux.conf assumes /bin/zsh.
 #
 # Symlink creation requires either an elevated shell (Run as Administrator) or
 # Developer Mode enabled (Settings -> For developers -> Developer Mode = ON).
@@ -112,6 +115,9 @@ function Invoke-DeployTree {
     # home/common/* -> $HOME (the genuinely cross-platform dotfiles)
     New-DotfileLink (Join-Path $Root 'home\common\.vimrc') (Join-Path $HOME '.vimrc')
     New-DotfileLink (Join-Path $Root 'home\common\.vim')   (Join-Path $HOME '.vim')
+
+    # home/windows/* -> $HOME (Windows-only dotfiles, e.g. psmux config)
+    New-DotfileLink (Join-Path $Root 'home\windows\.psmux.conf') (Join-Path $HOME '.psmux.conf')
 
     # Global git hooks — same path as the bash deploy's xdg-config/common
     # recursion produces on macOS/Linux. The bash hook script works under

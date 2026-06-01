@@ -68,6 +68,17 @@ function ..  { Set-Location .. }
 function ... { Set-Location ../.. }
 function g  { git @args }
 
+# Set the current psmux pane's title (shown in status-right via #{pane_title}).
+# Useful for distinguishing multiple Claude Code panes — e.g. `Set-PaneTitle projA`.
+function Set-PaneTitle {
+    param([Parameter(Mandatory)][string]$Title)
+    if (-not $env:TMUX) {
+        Write-Warning "Not inside psmux/tmux — pane title not set."
+        return
+    }
+    psmux select-pane -T $Title
+}
+
 # Starship prompt — falls back to default prompt if not installed.
 if (Get-Command starship -ErrorAction SilentlyContinue) {
     Invoke-Expression (& starship init powershell)
