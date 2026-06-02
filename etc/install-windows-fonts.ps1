@@ -134,13 +134,15 @@ function Install-FontFromGitHub {
         [string]$FontGlob
     )
     Write-Host "Source: $Repo  asset=$AssetGlob  font=$FontGlob" -ForegroundColor Cyan
-    $api = "https://api.github.com/repos/$Repo/releases/latest"
-    try {
-        $rel = Invoke-RestMethod $api -Headers @{ 'User-Agent' = 'dotfiles-installer' }
-    } catch {
-        Write-Warning "GitHub API failed for $Repo ($_) — skipping"
+    # Use `gh api` rather than a raw Invoke-RestMethod: gh is a hard dependency
+    # here, and it supplies the auth token automatically, lifting the API rate
+    # limit from 60/hr (unauthenticated, per IP) to 5000/hr.
+    $json = & gh api "repos/$Repo/releases/latest" 2>$null | Out-String
+    if ($LASTEXITCODE -ne 0 -or -not $json.Trim()) {
+        Write-Warning "gh api failed for $Repo (not authenticated? run 'gh auth login') — skipping"
         return
     }
+    $rel = $json | ConvertFrom-Json
     $asset = $rel.assets | Where-Object { $_.name -like $AssetGlob } | Select-Object -First 1
     if (-not $asset) {
         Write-Warning "no asset matching '$AssetGlob' in $Repo $($rel.tag_name) — skipping"
@@ -179,13 +181,13 @@ function Install-FontFromGitHubTag {
         [string]$FontGlob
     )
     Write-Host "Source: $Repo  tag-archive  font=$FontGlob" -ForegroundColor Cyan
-    $api = "https://api.github.com/repos/$Repo/tags?per_page=1"
-    try {
-        $tags = Invoke-RestMethod $api -Headers @{ 'User-Agent' = 'dotfiles-installer' }
-    } catch {
-        Write-Warning "GitHub API failed for $Repo ($_) — skipping"
+    # `gh api` for the auth token (see Install-FontFromGitHub) — lifts the rate limit.
+    $json = & gh api "repos/$Repo/tags?per_page=1" 2>$null | Out-String
+    if ($LASTEXITCODE -ne 0 -or -not $json.Trim()) {
+        Write-Warning "gh api failed for $Repo (not authenticated? run 'gh auth login') — skipping"
         return
     }
+    $tags = $json | ConvertFrom-Json
     if (-not $tags -or $tags.Count -eq 0) {
         Write-Warning "no tags in $Repo — skipping"
         return

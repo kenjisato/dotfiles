@@ -9,7 +9,7 @@
 
 if ! command -v gitleaks >/dev/null 2>&1; then
     echo "warning: gitleaks not on PATH — staged-secret scan skipped." >&2
-    echo "  install: brew install gitleaks  /  winget install gitleaks.gitleaks" >&2
+    echo "  install: brew install gitleaks  /  winget install Gitleaks.Gitleaks" >&2
     exit 0
 fi
 
