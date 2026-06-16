@@ -8,7 +8,5 @@
     email = you@example.com
 [commit]
     template = ~/.stCommitMsg
-[ghq]
-    root = ~/local/src
 [http]
     postBuffer = 16M
