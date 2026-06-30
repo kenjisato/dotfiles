@@ -4,7 +4,7 @@ export LANG="${LANGUAGE}"
 export LC_ALL="${LANGUAGE}"
 export LC_CTYPE="${LANGUAGE}"
 
-export PATH=~/bin:"$PATH"
+export PATH=~/bin:~/.local/bin:"$PATH"
 
 export GOPATH=$HOME/.go
 

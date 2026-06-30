@@ -48,12 +48,23 @@ if [ "${SHELL}" != "$(which zsh)" ]; then
   chsh -s "$(which zsh)"
 fi
 
+# Install Claude Code via official native installer (early, so a failure in the
+# rustup/uv/cargo steps below can't leave the box without Claude Code).
+if command -v claude > /dev/null 2>&1; then
+  echo "Claude Code is already installed."
+else
+  echo "Installing Claude Code..."
+  curl -fsSL https://claude.ai/install.sh | bash
+fi
+
 # Install Rust via rustup
 if command -v rustup > /dev/null 2>&1; then
   echo "Rust is already installed."
 else
   echo "Installing Rust..."
-  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+  # --no-modify-path: ~/.zshenv etc. are symlinks into this repo and already
+  # source ~/.cargo/env, so let rustup install the toolchain but not touch rc files.
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path
 fi
 
 # Install uv (Python package manager)
@@ -61,7 +72,9 @@ if command -v uv > /dev/null 2>&1; then
   echo "uv is already installed."
 else
   echo "Installing uv..."
-  curl -LsSf https://astral.sh/uv/install.sh | sh
+  # INSTALLER_NO_MODIFY_PATH: rc files are repo symlinks and ~/.local/bin is
+  # already on PATH (shell/zsh/.zshenv), so skip the installer's PATH edits.
+  curl -LsSf https://astral.sh/uv/install.sh | INSTALLER_NO_MODIFY_PATH=1 sh
 fi
 
 # Install Python dev tools via uv
@@ -82,14 +95,6 @@ if [ -f "$DOTFILES/pkg/cargo-tools.txt" ]; then
     [ -z "$pkg" ] || [[ "$pkg" == \#* ]] && continue
     cargo install "$pkg"
   done < "$DOTFILES/pkg/cargo-tools.txt"
-fi
-
-# Install Claude Code via official native installer
-if command -v claude > /dev/null 2>&1; then
-  echo "Claude Code is already installed."
-else
-  echo "Installing Claude Code..."
-  curl -fsSL https://claude.ai/install.sh | bash
 fi
 
 # Wire global git hooks at ~/.config/git/hooks (deployed from
