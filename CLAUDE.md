@@ -8,6 +8,7 @@ A private overlay repo (`dotfiles-private`) can be layered on top via `$DOTFILES
 
 ```bash
 bash etc/install            # Homebrew + brew bundle, zsh, Rust, uv, uv tools, cargo tools
+bash etc/install --profile server  # headless box: skip GUI app casks (keep fonts + r-app)
 bash etc/deploy             # Detect OS and create symlinks
 bash etc/deploy --dry-run   # Preview what would be linked
 ```
@@ -41,7 +42,7 @@ dotfiles/
 │   ├── wsl/
 │   └── windows/
 ├── pkg/
-│   ├── Brewfile                  # cross-platform; cask entries gated by `if OS.mac?`
+│   ├── Brewfile                  # cross-platform; casks gated by `if OS.mac?`, GUI apps further gated by server profile (HOMEBREW_DOTFILES_HOST_PROFILE)
 │   ├── uv-tools.txt              # Python dev tools installed via `uv tool install`
 │   ├── cargo-tools.txt           # Rust tools installed via `cargo install`
 │   ├── winget-packages.txt       # Windows; installed on every host

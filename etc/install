@@ -2,6 +2,26 @@
 
 set -e
 
+# Host profile (mirrors etc/install.ps1's $DOTFILES_HOST_PROFILE):
+#   --profile server  /  DOTFILES_HOST_PROFILE=server
+#       Headless box reached only over SSH — pkg/Brewfile skips GUI app casks
+#       (keeps CLI formulae, fonts, and R for headless rendering / packages).
+#   default (desktop): install everything.
+# No reliable "this is a server" auto-detection on macOS, so it is opt-in.
+HOST_PROFILE="${DOTFILES_HOST_PROFILE:-desktop}"
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --profile)   HOST_PROFILE="$2"; shift 2 ;;
+    --profile=*) HOST_PROFILE="${1#*=}"; shift ;;
+    *) echo "Unknown argument: $1" >&2; exit 2 ;;
+  esac
+done
+export DOTFILES_HOST_PROFILE="$HOST_PROFILE"
+# Homebrew scrubs non-HOMEBREW_-prefixed env vars before evaluating the
+# Brewfile, so forward the profile under a name brew will keep.
+export HOMEBREW_DOTFILES_HOST_PROFILE="$HOST_PROFILE"
+echo "Host profile: $HOST_PROFILE"
+
 # Install Homebrew
 if command -v brew > /dev/null 2>&1; then
   echo "Homebrew is already installed."

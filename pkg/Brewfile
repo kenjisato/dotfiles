@@ -15,17 +15,32 @@ brew "tree"
 brew "typst"
 brew "zsh-completions"
 
+# Host profile (mirrors etc/install.ps1's $DOTFILES_HOST_PROFILE; set by
+# etc/install). profile=server is a headless box reached only over SSH and
+# skips the GUI app casks below. Homebrew only forwards HOMEBREW_-prefixed env
+# vars to this file, so etc/install exports HOMEBREW_DOTFILES_HOST_PROFILE.
+server = (ENV["HOMEBREW_DOTFILES_HOST_PROFILE"] || ENV["DOTFILES_HOST_PROFILE"]) == "server"
+
 if OS.mac?
-  cask "coteditor"
-  cask "drawio"
+  # Fonts — needed for headless Quarto/Typst/LaTeX rendering (Japanese incl.),
+  # so keep them on the server profile too.
   cask "font-hack-nerd-font"
   cask "font-hackgen-nerd"
   cask "font-harano-aji"
   cask "font-ipafont"
   cask "font-source-code-pro"
   cask "font-source-sans-3"
+  # Official CRAN R build. Ships a binary R, so `install.packages()` pulls
+  # precompiled CRAN binaries; the Homebrew `r` formula would compile packages
+  # from source instead. Wanted on a research server, hence kept on server.
+  cask "r-app"
+end
+
+# GUI applications — need a display, skipped on the server profile.
+if OS.mac? && !server
+  cask "coteditor"
+  cask "drawio"
   cask "google-chrome"
   cask "karabiner-elements"
   cask "onedrive"
-  cask "r-app"
 end
