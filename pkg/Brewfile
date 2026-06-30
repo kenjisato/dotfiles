@@ -7,7 +7,9 @@ brew "kubernetes-cli"
 brew "neovim"
 brew "node"
 brew "pandoc"
-brew "podman"
+# podman ships macOS bottles for Apple Silicon only; on Intel macOS `brew` would
+# build it from source. Linux has both x86_64/arm64 bottles, so only Intel macs skip.
+brew "podman" unless OS.mac? && Hardware::CPU.intel?
 brew "starship"
 brew "tlrc"
 brew "tmux"
