@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# tmux-pane-border — format a pane's path (+ git branch/status) for pane-border-format.
+# Usage: tmux-pane-border <path>
+# Called from ~/.tmux.conf:
+#   set -g pane-border-format "... #(tmux-pane-border '#{pane_current_path}')"
+
+set -euo pipefail
+
+path="${1:-$PWD}"
+
+# Nerd Font git-branch glyph (U+E0A0), built from bytes so the source stays ASCII.
+glyph="$(printf '\356\202\240')"
+
+# Show $HOME as ~
+display="${path/#"$HOME"/~}"
+
+# Branch (or short SHA when detached) + working-tree status, from one status call.
+branch=""
+flags=""
+if git -C "$path" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    branch="$(git -C "$path" symbolic-ref --short -q HEAD 2>/dev/null \
+        || git -C "$path" rev-parse --short HEAD 2>/dev/null || true)"
+
+    # Flags:  +  staged (index)   !  unstaged edit   ?  untracked
+    staged="" unstaged="" untracked=""
+    while IFS= read -r line; do
+        case "$line" in
+            '??'*) untracked="?" ;;
+            *)
+                case "${line:0:1}" in [MADRC]) staged="+" ;; esac
+                case "${line:1:1}" in [MD]) unstaged="!" ;; esac
+                ;;
+        esac
+    done < <(git -C "$path" status --porcelain 2>/dev/null)
+    flags="${staged}${unstaged}${untracked}"
+fi
+
+if [ -n "$branch" ]; then
+    out="#[fg=colour114]${glyph} ${branch}"
+    if [ -n "$flags" ]; then
+        out="${out} #[fg=colour214][${flags}]"
+    fi
+    printf '%s  %s ' "$display" "$out"
+else
+    printf '%s ' "$display"
+fi
