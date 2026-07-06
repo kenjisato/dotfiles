@@ -1,10 +1,8 @@
-# Suppress compinit's "insecure directories" prompt globally. /opt/homebrew/share
-# is group-writable by design (admin members can brew install/upgrade without
-# sudo), and on multi-user machines that's the right tradeoff. Set this in
-# .zshenv so it applies even to non-interactive zsh invocations spawned by
-# tools like Claude Code's shell snapshot, where the prompt would otherwise
-# block stdin. The zshrc still uses `compinit -C -i` for its own call.
-export ZSH_DISABLE_COMPFIX=true
+# compinit's "insecure directories" prompt is avoided by keeping the Homebrew
+# completion dirs non-group-writable — etc/install strips the group-write bit
+# from "$(brew --prefix)/share" so no fpath entry is flagged. (ZSH_DISABLE_COMPFIX
+# used to live here, but it is an oh-my-zsh-only variable and a no-op under plain
+# zsh, so it never actually suppressed anything.) The zshrc call also passes -i.
 
 export LANGUAGE="en_US.UTF-8"
 export LANG="${LANGUAGE}"

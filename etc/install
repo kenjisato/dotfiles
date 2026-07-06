@@ -42,6 +42,17 @@ DOTFILES="$(cd "$(dirname "$0")/.." && pwd)"
 echo "Installing packages from Brewfile..."
 brew bundle --file="$DOTFILES/pkg/Brewfile"
 
+# Keep the Homebrew completion dirs out of compinit's "insecure directories"
+# prompt. A group-writable "$(brew --prefix)/share" taints every fpath entry
+# under it, and any compinit call lacking -i (e.g. Claude Code's shell-snapshot
+# replay) then blocks on a [y/n] prompt. On a single-user install brew runs as
+# the owner and doesn't need the group-write bit, so strip it. Guarded to a
+# user-owned prefix so we never touch a genuinely shared multi-user install.
+brew_share="$(brew --prefix)/share"
+if [ -O "$brew_share" ]; then
+  chmod g-w,o-w "$brew_share"
+fi
+
 # Set zsh as default shell
 if [ "${SHELL}" != "$(which zsh)" ]; then
   echo "Changing default shell to zsh..."
