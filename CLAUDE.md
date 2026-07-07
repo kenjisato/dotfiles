@@ -13,6 +13,15 @@ bash etc/deploy             # Detect OS and create symlinks
 bash etc/deploy --dry-run   # Preview what would be linked
 ```
 
+**Host profile is remembered.** `--profile server` is persisted by default to a
+per-machine marker (`~/.config/dotfiles/host-profile`), so plain `bash etc/install`
+reruns keep the server profile — no need to re-pass the flag. The marker is shared
+with `dotfiles-private`'s installer, so both always resolve to the same profile.
+Clear it with `--profile desktop` (back to the default); use `--profile server --no-save`
+for a one-off test that must not stick. Precedence: `--profile` > `$DOTFILES_HOST_PROFILE`
+> marker > desktop. `etc/install` also runs `gh auth setup-git` when `gh` is
+authenticated, so HTTPS `git push` doesn't prompt for a password.
+
 `etc/deploy` is idempotent. It refuses to run if `~/.config` is itself a symlink (the legacy whole-directory layout) and prints migration instructions.
 
 ## Repository Structure
