@@ -8,14 +8,61 @@ set -e
 #       (keeps CLI formulae, fonts, and R for headless rendering / packages).
 #   default (desktop): install everything.
 # No reliable "this is a server" auto-detection on macOS, so it is opt-in.
-HOST_PROFILE="${DOTFILES_HOST_PROFILE:-desktop}"
+#
+# An explicit --profile is remembered in a per-machine marker (dotfiles-private
+# reads the same file), so follow-up runs keep the profile without re-passing
+# the flag. Precedence: --profile > $DOTFILES_HOST_PROFILE > marker > desktop.
+#   bash etc/install --profile server            # switch to server, remembered
+#   bash etc/install                             # reuses the saved profile
+#   bash etc/install --profile desktop           # forget it (back to default)
+#   bash etc/install --profile server --no-save  # server for THIS run only
+PROFILE_MARKER="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/host-profile"
+
+HOST_PROFILE=""
+PROFILE_FROM_FLAG=0
+SAVE=""   # empty=auto (save when set via flag); 1=force save; 0=never save
 while [ $# -gt 0 ]; do
   case "$1" in
-    --profile)   HOST_PROFILE="$2"; shift 2 ;;
-    --profile=*) HOST_PROFILE="${1#*=}"; shift ;;
+    --profile)   HOST_PROFILE="$2"; PROFILE_FROM_FLAG=1; shift 2 ;;
+    --profile=*) HOST_PROFILE="${1#*=}"; PROFILE_FROM_FLAG=1; shift ;;
+    --save)      SAVE=1; shift ;;
+    --no-save)   SAVE=0; shift ;;
     *) echo "Unknown argument: $1" >&2; exit 2 ;;
   esac
 done
+
+# What is currently persisted (desktop == no marker).
+SAVED_PROFILE="desktop"
+if [ -f "$PROFILE_MARKER" ]; then
+  SAVED_PROFILE="$(tr -d '[:space:]' < "$PROFILE_MARKER")"
+  [ -z "$SAVED_PROFILE" ] && SAVED_PROFILE="desktop"
+fi
+
+# Resolve active profile: flag (already set) > env var > saved marker > desktop.
+[ -z "$HOST_PROFILE" ] && HOST_PROFILE="${DOTFILES_HOST_PROFILE:-}"
+[ -z "$HOST_PROFILE" ] && HOST_PROFILE="$SAVED_PROFILE"
+
+# Persist an explicitly-chosen profile by default; --no-save opts out. desktop
+# is the default, so persisting it means removing the marker (that is how you
+# clear a saved server profile). The marker is machine-wide and shared with the
+# dotfiles-private installer, so saving here also sets its default.
+[ -z "$SAVE" ] && SAVE="$PROFILE_FROM_FLAG"
+if [ "$SAVE" = 1 ]; then
+  if [ "$HOST_PROFILE" = desktop ]; then
+    if [ -f "$PROFILE_MARKER" ]; then
+      rm -f "$PROFILE_MARKER"
+      echo "Cleared saved host profile ($PROFILE_MARKER) — back to desktop default"
+    fi
+  else
+    mkdir -p "$(dirname "$PROFILE_MARKER")"
+    printf '%s\n' "$HOST_PROFILE" > "$PROFILE_MARKER"
+    echo "Saved host profile '$HOST_PROFILE' to $PROFILE_MARKER"
+  fi
+elif [ "$HOST_PROFILE" != "$SAVED_PROFILE" ]; then
+  # Transient override (env var or --no-save) not matching what is saved.
+  echo "Note: using profile '$HOST_PROFILE' for this run only; saved profile is '$SAVED_PROFILE'."
+fi
+
 export DOTFILES_HOST_PROFILE="$HOST_PROFILE"
 # Homebrew scrubs non-HOMEBREW_-prefixed env vars before evaluating the
 # Brewfile, so forward the profile under a name brew will keep.
@@ -112,6 +159,15 @@ fi
 # xdg-config/common/git/hooks/). Idempotent — just sets the value.
 echo "Setting core.hooksPath -> ~/.config/git/hooks ..."
 git config --global core.hooksPath '~/.config/git/hooks'
+
+# Register gh as git's credential helper. `gh auth login` does not always do
+# this (notably on servers set up over SSH), leaving `git push` over HTTPS to
+# prompt for a password. `gh auth setup-git` is idempotent, so run it whenever
+# gh is present and already authenticated.
+if command -v gh > /dev/null 2>&1 && gh auth status > /dev/null 2>&1; then
+  echo "Configuring gh as git credential helper..."
+  gh auth setup-git
+fi
 
 echo "$(tput setaf 2)Install complete!$(tput sgr0)"
 echo "Please log out and log back in for the shell change to take effect."

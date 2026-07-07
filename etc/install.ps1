@@ -185,5 +185,21 @@ if (Test-Path $wtScript) {
     }
 }
 
+# Register gh as git's credential helper. `gh auth login` does not always do
+# this, leaving `git push` over HTTPS to prompt for a password.
+# `gh auth setup-git` is idempotent.
+Write-Host ""
+if (Get-Command gh -ErrorAction SilentlyContinue) {
+    & gh auth status 2>&1 | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+        if ($DryRun) {
+            Write-Host "would: gh auth setup-git"
+        } else {
+            Write-Host "Configuring gh as git credential helper..." -ForegroundColor Cyan
+            & gh auth setup-git
+        }
+    }
+}
+
 Write-Host ""
 Write-Host "Install complete!" -ForegroundColor Green
