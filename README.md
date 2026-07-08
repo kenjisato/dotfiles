@@ -27,7 +27,12 @@ Log out and back in for the zsh default-shell change to take effect.
 
 ```bash
 # 1. apt prerequisites
-sudo apt update && sudo apt install -y curl git zsh build-essential
+sudo apt update && sudo apt install -y curl git zsh build-essential locales
+
+# The shell config sets LANG=en_US.UTF-8 (shell/bash/.bash_profile,
+# shell/zsh/.zshenv). Minimal WSL/container images don't ship that locale, so
+# generate it or every shell prints "setlocale: cannot change locale".
+sudo locale-gen en_US.UTF-8 && sudo update-locale
 
 # 2. Clone & run
 git clone https://github.com/kenjisato/dotfiles.git ~/dotfiles

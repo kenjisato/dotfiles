@@ -4,10 +4,11 @@
 # used to live here, but it is an oh-my-zsh-only variable and a no-op under plain
 # zsh, so it never actually suppressed anything.) The zshrc call also passes -i.
 
-export LANGUAGE="en_US.UTF-8"
-export LANG="${LANGUAGE}"
-export LC_ALL="${LANGUAGE}"
-export LC_CTYPE="${LANGUAGE}"
+# Locale: set only LANG. Do NOT export LC_ALL from a profile — it hard-overrides
+# every category and prints "setlocale: cannot change locale" on any machine
+# where the locale is not generated (typically a fresh WSL distro). Generate the
+# locale at the OS level instead — see dotfiles-private docs/howto/wsl-locale.md.
+export LANG="en_US.UTF-8"
 
 # Settings for golang
 export GOPATH="$HOME/local"
