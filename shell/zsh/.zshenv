@@ -26,6 +26,8 @@ path=( \
     ~/.local/bin(N-/) \
     ~/.zplug/bin(N-/) \
     ~/.tmux/bin(N-/) \
+    ~/Library/TinyTeX/bin/*(N-/) \
+    ~/.TinyTeX/bin/*(N-/) \
     "$path[@]" \
     "$GOBIN" \
     )
