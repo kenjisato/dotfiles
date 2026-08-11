@@ -20,6 +20,13 @@ display="${path/#"$HOME"/~}"
 # Branch (or short SHA when detached) + working-tree status + upstream
 # divergence, all from ONE `git status -b` call. No network: ahead/behind are
 # counted against the local remote-tracking ref (i.e. as of the last fetch).
+#
+# `--no-optional-locks` is REQUIRED, not an optimization: tmux re-evaluates
+# `#()` in pane-border-format every status-interval (15s) for every bordered
+# pane, and a plain `git status` refreshes the index stat cache by taking
+# `.git/index.lock`. Without the flag, any pane sitting in a repo makes an
+# interactive `git add`/`git commit` there fail intermittently with
+# "Unable to create '.git/index.lock': File exists".
 branch=""
 flags=""
 ahead="" behind=""
@@ -43,7 +50,7 @@ if git -C "$path" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
                 case "${line:1:1}" in [MD]) unstaged="!" ;; esac
                 ;;
         esac
-    done < <(git -C "$path" status --porcelain -b 2>/dev/null)
+    done < <(git --no-optional-locks -C "$path" status --porcelain -b 2>/dev/null)
     flags="${staged}${unstaged}${untracked}"
 fi
 

@@ -117,6 +117,10 @@ The zsh config is layered:
 
 `etc/install` and `etc/install.ps1` set `git config --global core.hooksPath ~/.config/git/hooks`, and `etc/deploy{,.ps1}` symlink `xdg-config/common/git/hooks/pre-commit` into that directory. The result: every `git commit` on this machine scans the staged diff with gitleaks before allowing the commit. Bypass with `git commit --no-verify`; gitleaks itself can be silenced per-pattern via a repo-local `.gitleaks.toml`. CI should also scan on push as a backstop — pre-commit is a guard against *accidents*, not a security boundary.
 
+## Display scripts that call git
+
+Anything that shells out to `git` on a **timer** for display purposes (tmux `pane-border-format` / status bar, prompts, editor gutters) must pass `--no-optional-locks`. `git status` looks read-only but refreshes the index stat cache, taking `.git/index.lock` to do it — so a periodic caller makes interactive `git add`/`git commit` in that repo fail intermittently with `Unable to create '.git/index.lock': File exists`. The flag suppresses that write; output is unchanged. Currently applies to `bin/common/tmux-pane-border`, re-evaluated every `status-interval` (15s) per bordered pane. Read-only plumbing (`rev-parse`, `symbolic-ref`) doesn't take the lock, but adding the flag by default costs nothing.
+
 ## Cross-Platform Notes
 
 - Homebrew shellenv detection in `shell/zsh/.zprofile`: `/opt/homebrew` (Apple Silicon), `/usr/local` (Intel), `/home/linuxbrew/.linuxbrew` (Linux).
