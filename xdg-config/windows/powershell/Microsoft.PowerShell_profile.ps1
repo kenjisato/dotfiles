@@ -57,6 +57,11 @@ function Reload-Env {
 # Editor preference — Neovim, then VS Code.
 if (Get-Command nvim -ErrorAction SilentlyContinue) {
     $Env:EDITOR = 'nvim'
+    # vim/view を nvim に寄せる (bash/zsh 側の alias と揃える)。
+    # Set-Alias は引数を持てず view の -R を表現できないので、両方とも関数にする。
+    # `nvim -R` は vim の `view` と同じ読み取り専用モード。
+    function vim  { nvim @args }
+    function view { nvim -R @args }
 } elseif (Get-Command code -ErrorAction SilentlyContinue) {
     $Env:EDITOR = 'code -w'
 }
