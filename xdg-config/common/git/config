@@ -1,0 +1,48 @@
+# Linked to ~/.config/git/config by etc/deploy.
+#
+# THIS FILE IS IN A PUBLIC REPO. Never put user.name, user.email, tokens, or
+# any other identifying value here — see the [include] note at the bottom for
+# where machine-local settings go.
+#
+# How git resolves the two "global" config files (verified on git 2.47):
+#   - Both ~/.config/git/config (this file) and ~/.gitconfig are read, in that
+#     order. The XDG file is NOT ignored when ~/.gitconfig exists.
+#   - For a single-valued key the file read LAST wins, so ~/.gitconfig
+#     overrides anything set here. Multi-valued keys (credential.helper, ...)
+#     accumulate from both.
+#   - `git config --global` WRITES to ~/.gitconfig whenever that file exists,
+#     and gh auth setup-git creates it.
+# Identity therefore lives in ~/.gitconfig, not here: that keeps the file that
+# wins and the file the standard command edits as one and the same, so there is
+# no silent-override trap. etc/install seeds it from `gh api user`.
+
+[core]
+    excludesfile = ~/.config/git/ignore
+    # Global gitleaks pre-commit scan. The hook itself is symlinked to
+    # ~/.config/git/hooks/pre-commit by etc/deploy. Setting it here rather than
+    # via `git config --global` keeps ~/.gitconfig free of repo-managed values.
+    # Windows is the exception: etc/deploy.ps1 links only the hook, not this
+    # file, so etc/install.ps1 still sets core.hooksPath globally there.
+    hooksPath = ~/.config/git/hooks
+    autocrlf = input
+    filemode = false
+    eol = lf
+
+[http]
+    postBuffer = 16M
+
+# Machine-local, untracked, optional. A relative include path resolves against
+# the directory of the file doing the including, and git uses the symlink's own
+# location rather than its target in the repo — so this means
+# ~/.config/git/config.local, never a file inside the dotfiles checkout. A
+# missing include is silently ignored, so this is safe to leave unsatisfied.
+#
+# Put anything host-specific here, e.g. a commit template:
+#     [commit]
+#         template = ~/.stCommitMsg
+# commit.template deliberately does NOT live in this file: if the template is
+# missing, `git commit` without -m aborts with
+# "fatal: could not read '<path>'" (exit 128), which would break commits on
+# every machine that lacks the file.
+[include]
+    path = config.local

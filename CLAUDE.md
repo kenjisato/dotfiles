@@ -20,7 +20,9 @@ with `dotfiles-private`'s installer, so both always resolve to the same profile.
 Clear it with `--profile desktop` (back to the default); use `--profile server --no-save`
 for a one-off test that must not stick. Precedence: `--profile` > `$DOTFILES_HOST_PROFILE`
 > marker > desktop. `etc/install` also runs `gh auth setup-git` when `gh` is
-authenticated, so HTTPS `git push` doesn't prompt for a password.
+authenticated, so HTTPS `git push` doesn't prompt for a password, and seeds
+`user.name`/`user.email` from the gh account when git has no identity yet — see
+[Global git config](#global-git-config-two-files-and-which-one-wins).
 
 `etc/deploy` is idempotent. It refuses to run if `~/.config` is itself a symlink (the legacy whole-directory layout) and prints migration instructions.
 
@@ -121,9 +123,31 @@ The bash config mirrors that split, but with one rule that is easy to get wrong:
 - `VENVROOT=~/.envs`
 - `~/bin` is on PATH (managed by deploy)
 
+## Global git config (two files, and which one wins)
+
+Git reads **both** global config files, in this order: `~/.config/git/config`, then `~/.gitconfig`. The XDG file is *not* ignored when `~/.gitconfig` exists — a natural assumption, and wrong. For a single-valued key the file read **last wins**, so anything in `~/.gitconfig` overrides the deployed config; multi-valued keys (`credential.helper`, …) accumulate from both. `git config --global` **writes** to `~/.gitconfig` whenever that file exists, and `gh auth setup-git` creates it.
+
+The split follows from that:
+
+| Where | What | Tracked? |
+|---|---|---|
+| `xdg-config/common/git/config` → `~/.config/git/config` | Portable, non-personal settings + `core.hooksPath` + `[include] path = config.local` | Yes — **never put identity or secrets here, this repo is public** |
+| `~/.gitconfig` | `user.name` / `user.email`, `gh` credential helpers | No |
+| `~/.config/git/config.local` | Per-machine overrides; the slot a private overlay can deploy | No |
+
+Identity lives in `~/.gitconfig` deliberately: that is both the file `git config --global` edits and the file that wins, so there is no silent-override trap. `etc/install` seeds it from `gh api user` when `user.email` is unset — but note the ordering, since README runs `gh auth login` *after* the installer: on a genuinely first run gh is installed and unauthenticated, the seeding is skipped, and the installer's closing message tells you to re-run it or set the identity by hand. Without this, the first `git commit` on a fresh box fails with "Author identity unknown".
+
+A relative `[include] path` resolves against the directory of the *symlink* (`~/.config/git/`), not the symlink's target inside the repo, so `config.local` can never accidentally resolve to a tracked file. A missing include is silently ignored.
+
+`commit.template` must **not** go in the tracked config: if the template file is absent, `git commit` without `-m` aborts with `fatal: could not read '<path>'` (exit 128). Put it in `config.local`.
+
 ## Global git pre-commit (gitleaks)
 
-`etc/install` and `etc/install.ps1` set `git config --global core.hooksPath ~/.config/git/hooks`, and `etc/deploy{,.ps1}` symlink `xdg-config/common/git/hooks/pre-commit` into that directory. The result: every `git commit` on this machine scans the staged diff with gitleaks before allowing the commit. Bypass with `git commit --no-verify`; gitleaks itself can be silenced per-pattern via a repo-local `.gitleaks.toml`. CI should also scan on push as a backstop — pre-commit is a guard against *accidents*, not a security boundary.
+`core.hooksPath = ~/.config/git/hooks` ships in the tracked `xdg-config/common/git/config` above, and `etc/deploy` symlinks `xdg-config/common/git/hooks/pre-commit` into that directory — so **the hook needs `etc/deploy` to have run**, not just `etc/install`. Windows is the exception: `etc/deploy.ps1` links only the hook, not the config file, so `etc/install.ps1` still sets `core.hooksPath` via `git config --global`.
+
+The result: every `git commit` on this machine scans the staged diff with gitleaks before allowing the commit. Bypass with `git commit --no-verify`; gitleaks itself can be silenced per-pattern via a repo-local `.gitleaks.toml`. CI should also scan on push as a backstop — pre-commit is a guard against *accidents*, not a security boundary.
+
+The hook picks its subcommand at runtime: gitleaks 8.19 superseded `protect` with `git`, and `protect` is already hidden from `--help` in 8.30. This matters because an unknown subcommand exits **1**, the same code as "leaks found" — so hardcoding a removed subcommand would block every commit with a misleading secret-found message rather than failing visibly.
 
 ## Display scripts that call git
 

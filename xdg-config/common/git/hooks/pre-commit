@@ -1,6 +1,8 @@
 #!/bin/sh
 #
-# Global pre-commit hook installed via `git config --global core.hooksPath`.
+# Global pre-commit hook. core.hooksPath points here from the deployed
+# ~/.config/git/config on macOS/Linux/WSL, and from `git config --global` on
+# Windows (etc/deploy.ps1 links only this hook, not that config file).
 # Runs on every repo on this machine until/unless bypassed with --no-verify.
 #
 # Scans staged changes for secret-shaped strings via gitleaks. Not a
@@ -13,7 +15,18 @@ if ! command -v gitleaks >/dev/null 2>&1; then
     exit 0
 fi
 
-gitleaks protect --staged --redact --no-banner
+# gitleaks 8.19 superseded `protect` with `git`. `protect` still runs in 8.30 but
+# is already hidden from --help, so it will eventually go away — and an unknown
+# subcommand exits 1, which is indistinguishable from the "leaks found" case
+# below and would block every commit with a misleading message. Pick a
+# subcommand that actually exists instead of assuming one.
+if gitleaks git --help >/dev/null 2>&1; then
+    set -- git --staged
+else
+    set -- protect --staged
+fi
+
+gitleaks "$@" --redact --no-banner
 rc=$?
 
 if [ "$rc" -eq 0 ]; then

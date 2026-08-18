@@ -175,10 +175,11 @@ if [ -f "$DOTFILES/pkg/cargo-tools.txt" ]; then
   done < "$DOTFILES/pkg/cargo-tools.txt"
 fi
 
-# Wire global git hooks at ~/.config/git/hooks (deployed from
-# xdg-config/common/git/hooks/). Idempotent — just sets the value.
-echo "Setting core.hooksPath -> ~/.config/git/hooks ..."
-git config --global core.hooksPath '~/.config/git/hooks'
+# core.hooksPath (the global gitleaks pre-commit scan) is no longer written to
+# ~/.gitconfig from here — it ships in the tracked xdg-config/common/git/config
+# that etc/deploy links to ~/.config/git/config. Run `bash etc/deploy` for the
+# hook to take effect. (etc/install.ps1 still sets it globally: etc/deploy.ps1
+# links only the hook on Windows, not the config file.)
 
 # Register gh as git's credential helper. `gh auth login` does not always do
 # this (notably on servers set up over SSH), leaving `git push` over HTTPS to
@@ -189,7 +190,48 @@ if command -v gh > /dev/null 2>&1 && gh auth status > /dev/null 2>&1; then
   gh auth setup-git
 fi
 
+# A fresh box has no git identity — it is deliberately absent from this public
+# repo, and the ~/.config/git/config shipped here carries only non-personal
+# settings. Without an identity the first `git commit` dies with "Author
+# identity unknown", so surface it now instead of at commit time.
+#
+# Identity belongs in ~/.gitconfig: that is where `git config --global` writes,
+# and it is the file that wins over ~/.config/git/config for single-valued keys,
+# so the file that wins and the file you edit stay the same one. The other valid
+# home is ~/.config/git/config.local, pulled in by the [include] at the bottom
+# of ~/.config/git/config — that is the slot for a private overlay to deploy.
+#
+# Ordering matters here: README runs `gh auth login` AFTER this installer, so on
+# a genuinely first run gh is installed but not yet authenticated and the
+# seeding below is skipped by design. Re-running the installer after logging in
+# picks it up; the closing message says so.
+GIT_IDENTITY_MISSING=0
+if [ -z "$(git config --get user.email || true)" ]; then
+  GIT_IDENTITY_MISSING=1
+  if command -v gh > /dev/null 2>&1 && gh auth status > /dev/null 2>&1; then
+    gh_name="$(gh api user --jq .name 2>/dev/null || true)"
+    gh_email="$(gh api user --jq .email 2>/dev/null || true)"
+    # A gh account with its email hidden reports null, hence the guard.
+    if [ -n "$gh_email" ] && [ "$gh_email" != null ]; then
+      echo "Setting git identity from the authenticated gh account..."
+      if [ -n "$gh_name" ] && [ "$gh_name" != null ]; then
+        git config --global user.name "$gh_name"
+      fi
+      git config --global user.email "$gh_email"
+      GIT_IDENTITY_MISSING=0
+    fi
+  fi
+fi
+
 echo "$(tput setaf 2)Install complete!$(tput sgr0)"
+if [ "$GIT_IDENTITY_MISSING" = 1 ]; then
+  echo
+  echo "git has no user.email on this machine, so 'git commit' will fail with"
+  echo "\"Author identity unknown\". Fix it either way:"
+  echo "  gh auth login && bash etc/install   # a re-run seeds it from your account"
+  echo "  git config --global user.name  'Your Name'"
+  echo "  git config --global user.email  'you@example.com'"
+fi
 if [ "$SHELL_CHANGED" = 1 ]; then
   echo
   echo "Login shell is now $ZSH_PATH, but running processes still carry the old"

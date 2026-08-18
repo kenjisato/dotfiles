@@ -95,6 +95,30 @@ PowerShell profile (to `$PROFILE`), `.vimrc`, and `.vim/`. Apps without a
 clean Windows XDG story (gh, git, rstudio, …) are skipped. `.tmux.conf` is
 also skipped: native Windows has no tmux, and WSL has its own filesystem.
 
+## git identity
+
+This repo is public, so it carries no `user.name`/`user.email` — the deployed
+`~/.config/git/config` has only portable settings. On a fresh machine the first
+`git commit` therefore fails with `Author identity unknown` until you set one.
+
+`etc/install` seeds it from your gh account, but only if you are already logged
+in; on a first run `gh auth login` has not happened yet (it comes below), so the
+installer skips the step and says so at the end. Either re-run it afterwards, or
+set the identity by hand:
+
+```bash
+gh auth login && bash etc/install    # a re-run seeds it from your account
+# or
+git config --global user.name  'Your Name'
+git config --global user.email 'you@example.com'
+```
+
+Identity goes in `~/.gitconfig`, not `~/.config/git/config`. Git reads both and
+`~/.gitconfig` wins for single-valued keys, so keeping identity there means the
+file that wins is also the file `git config --global` edits. Per-machine
+overrides that are not identity can go in `~/.config/git/config.local`, which the
+deployed config includes automatically when present.
+
 ## Optional: private overlay
 
 User-specific files (personal bookmarks, identity-bearing config, private
@@ -155,6 +179,17 @@ Updates aren't automated on purpose — run them when you want a refresh.
 [`cargo-update`](https://github.com/nabijaczleweli/cargo-update) (`cargo
 install cargo-update`) makes the cargo ones nicer (`cargo install-update -a`),
 but it's opt-in.
+
+### On a machine set up before `git/config` was tracked
+
+`xdg-config/common/git/config` used to be `config.example`, copied to
+`~/.config/git/config` by hand. `etc/deploy` skips a destination that is a real
+file rather than a symlink, so on those machines it prints a notice and leaves
+your copy alone — nothing breaks, and `core.hooksPath` is still in `~/.gitconfig`
+from the older installer. To pick up the tracked version instead, move any
+identity lines into `~/.gitconfig`, anything else machine-specific into
+`~/.config/git/config.local`, then delete the hand-made file and re-run
+`bash etc/deploy`.
 
 ## Layout
 
