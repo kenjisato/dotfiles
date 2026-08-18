@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 #
-# Undeploy dotfiles — remove symlinks in $HOME that point into the
-# public dotfiles repo (and the private overlay, if $DOTFILES_PRIVATE
-# is set).
+# Undeploy dotfiles — remove symlinks in $HOME that point into this
+# repo (and into the overlay directory, if $DOTFILES_PRIVATE is set).
 #
 # Scans $HOME (top-level), $HOME/.config (recursive), and $HOME/bin
 # (top-level) for symlinks whose target resolves into either repo.
@@ -31,8 +30,8 @@ if [ -n "${DOTFILES_PRIVATE:-}" ] && [ -d "$DOTFILES_PRIVATE" ]; then
   PRIVATE="$DOTFILES_PRIVATE"
 fi
 
-echo "Public:       $DOTFILES"
-[ -n "$PRIVATE" ] && echo "Private:      $PRIVATE" || echo "Private:      (none)"
+echo "Source:       $DOTFILES"
+[ -n "$PRIVATE" ] && echo "Overlay:      $PRIVATE" || echo "Overlay:      (none)"
 [ $DRY_RUN -eq 1 ] && echo "(dry-run — no changes will be made)"
 echo
 

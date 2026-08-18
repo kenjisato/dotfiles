@@ -35,11 +35,11 @@ if ($Env:DOTFILES_PRIVATE -and (Test-Path $Env:DOTFILES_PRIVATE)) {
     $Private = $Env:DOTFILES_PRIVATE
 }
 
-Write-Host "Public:  $Dotfiles"
+Write-Host "Source:  $Dotfiles"
 if ($Private) {
-    Write-Host "Private: $Private"
+    Write-Host "Overlay: $Private"
 } else {
-    Write-Host "Private: (none — run dotfiles-private/etc/deploy.ps1 to overlay)"
+    Write-Host "Overlay: (none — set $Env:DOTFILES_PRIVATE to add one)"
 }
 if ($DryRun) { Write-Host "(dry-run — no changes will be made)" -ForegroundColor Yellow }
 Write-Host ""
@@ -126,12 +126,12 @@ function Invoke-DeployTree {
                     (Join-Path $HOME '.config\git\hooks\pre-commit')
 }
 
-Write-Host "--- public ---"
+Write-Host "--- base ---"
 Invoke-DeployTree $Dotfiles
 
 if ($Private) {
     Write-Host ""
-    Write-Host "--- private overlay ---"
+    Write-Host "--- overlay ---"
     Invoke-DeployTree $Private
 }
 

@@ -9,9 +9,10 @@ set -e
 #   default (desktop): install everything.
 # No reliable "this is a server" auto-detection on macOS, so it is opt-in.
 #
-# An explicit --profile is remembered in a per-machine marker (dotfiles-private
-# reads the same file), so follow-up runs keep the profile without re-passing
-# the flag. Precedence: --profile > $DOTFILES_HOST_PROFILE > marker > desktop.
+# An explicit --profile is remembered in a per-machine marker (the path below,
+# which an overlay installer may read too), so follow-up runs keep the profile
+# without re-passing the flag.
+# Precedence: --profile > $DOTFILES_HOST_PROFILE > marker > desktop.
 #   bash etc/install --profile server            # switch to server, remembered
 #   bash etc/install                             # reuses the saved profile
 #   bash etc/install --profile desktop           # forget it (back to default)
@@ -44,8 +45,8 @@ fi
 
 # Persist an explicitly-chosen profile by default; --no-save opts out. desktop
 # is the default, so persisting it means removing the marker (that is how you
-# clear a saved server profile). The marker is machine-wide and shared with the
-# dotfiles-private installer, so saving here also sets its default.
+# clear a saved server profile). The marker is machine-wide, so any overlay
+# installer reading the same path resolves to the same profile.
 [ -z "$SAVE" ] && SAVE="$PROFILE_FROM_FLAG"
 if [ "$SAVE" = 1 ]; then
   if [ "$HOST_PROFILE" = desktop ]; then
@@ -238,7 +239,7 @@ fi
 # and it is the file that wins over ~/.config/git/config for single-valued keys,
 # so the file that wins and the file you edit stay the same one. The other valid
 # home is ~/.config/git/config.local, pulled in by the [include] at the bottom
-# of ~/.config/git/config — that is the slot for a private overlay to deploy.
+# of ~/.config/git/config — that is the slot an overlay can deploy into.
 #
 # Ordering matters here: README runs `gh auth login` AFTER this installer, so on
 # a genuinely first run gh is installed but not yet authenticated and the

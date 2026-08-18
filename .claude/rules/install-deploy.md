@@ -16,7 +16,7 @@ Two rules follow, both learned the hard way:
 
 ## Host profile
 
-`--profile server` skips GUI app casks (keeping CLI formulae, fonts, and `r-app` for headless rendering). It is persisted by default to a per-machine marker (`~/.config/dotfiles/host-profile`), so plain `bash etc/install` reruns keep it. The marker is shared with `dotfiles-private`'s installer, so both always resolve to the same profile.
+`--profile server` skips GUI app casks (keeping CLI formulae, fonts, and `r-app` for headless rendering). It is persisted by default to a per-machine marker (`~/.config/dotfiles/host-profile`), so plain `bash etc/install` reruns keep it. That path is the documented interface for the host profile: an overlay installer that reads it resolves to the same profile without this repo knowing anything about it.
 
 Clear it with `--profile desktop`; use `--profile server --no-save` for a one-off test. Precedence: `--profile` > `$DOTFILES_HOST_PROFILE` > marker > desktop. Homebrew scrubs non-`HOMEBREW_`-prefixed variables before evaluating the Brewfile, which is why the installer also exports `HOMEBREW_DOTFILES_HOST_PROFILE`.
 
@@ -45,7 +45,7 @@ README runs `gh auth login` *after* the installer, so on a genuinely first run g
 - `.DS_Store`, `.gitkeep`, and `*.example` files are ignored — so a `*.example` file is documentation only and is **never** deployed. Nothing else creates the real file for it.
 - It creates `~/.gitconfig` when absent, **before** linking anything. See `git-config.md`; do not remove this.
 - It refuses to run if `~/.config` is itself a symlink (the legacy whole-directory layout) and prints migration instructions.
-- With `$DOTFILES_PRIVATE` set, the same `deploy_tree` function runs against the private repo *after* the public one, so a private file at the same destination path **replaces** the public one rather than merging with it. Prefer giving the private overlay its own filename (e.g. a `.local` include) over shadowing a public file.
+- With `$DOTFILES_PRIVATE` set, the same `deploy_tree` function runs against that directory *after* this repo, so an overlay file at the same destination path **replaces** ours rather than merging with it — which also means later improvements here never reach that machine. Document the `*.local` extension slots instead of inviting overlays to shadow tracked files. Nothing in this repo may name, assume, or depend on a particular overlay.
 
 `etc/undeploy` walks `$HOME` and removes only symlinks whose target resolves into either repo; regular files are never touched.
 

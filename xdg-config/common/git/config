@@ -1,6 +1,6 @@
 # Linked to ~/.config/git/config by etc/deploy.
 #
-# THIS FILE IS IN A PUBLIC REPO. Never put user.name, user.email, tokens, or
+# THIS FILE IS TRACKED AND PUBLISHED. Never put user.name, user.email, tokens, or
 # any other identifying value here — see the [include] note at the bottom for
 # where machine-local settings go.
 #

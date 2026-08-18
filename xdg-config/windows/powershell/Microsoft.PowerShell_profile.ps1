@@ -92,7 +92,7 @@ if (Get-Command starship -ErrorAction SilentlyContinue) {
 # Personal env hooks.
 $Env:ZM_HOME = "$HOME/.zm"
 
-# Local overlay (e.g. from dotfiles-private deploy step).
+# Local overlay: an untracked profile.local.ps1 next to $PROFILE, if present.
 $localProfile = Join-Path (Split-Path $PROFILE) 'profile.local.ps1'
 if (Test-Path $localProfile) {
     . $localProfile

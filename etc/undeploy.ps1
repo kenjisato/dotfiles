@@ -1,7 +1,7 @@
 # etc/undeploy.ps1 — Windows / PowerShell counterpart to etc/undeploy (bash).
 #
 # Removes symlinks at $PROFILE and under $HOME (top-level) whose target
-# resolves into this dotfiles repo or its private overlay
+# resolves into this repo or into the overlay directory
 # ($Env:DOTFILES_PRIVATE). Regular files are never touched, and symlinks
 # pointing anywhere else (e.g. user-created links into other repos) are
 # left alone.
@@ -29,11 +29,11 @@ if ($Env:DOTFILES_PRIVATE -and (Test-Path $Env:DOTFILES_PRIVATE)) {
     $Private = (Resolve-Path $Env:DOTFILES_PRIVATE).Path
 }
 
-Write-Host "Public:  $Dotfiles"
+Write-Host "Source:  $Dotfiles"
 if ($Private) {
-    Write-Host "Private: $Private"
+    Write-Host "Overlay: $Private"
 } else {
-    Write-Host "Private: (none)"
+    Write-Host "Overlay: (none)"
 }
 if ($DryRun) { Write-Host "(dry-run — no changes will be made)" -ForegroundColor Yellow }
 Write-Host ""

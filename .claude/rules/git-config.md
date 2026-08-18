@@ -12,13 +12,13 @@ The split follows from that:
 
 | Where | What | Tracked? |
 |---|---|---|
-| `xdg-config/common/git/config` → `~/.config/git/config` | Portable, non-personal settings + `core.hooksPath` + `[include] path = config.local` | Yes — **never put identity or secrets here, this repo is public** |
+| `xdg-config/common/git/config` → `~/.config/git/config` | Portable, non-personal settings + `core.hooksPath` + `[include] path = config.local` | Yes — **never put identity or secrets here; everything tracked is published** |
 | `~/.gitconfig` | `user.name` / `user.email`, `gh` credential helpers | No |
-| `~/.config/git/config.local` | Per-machine overrides; the slot a private overlay can deploy | No |
+| `~/.config/git/config.local` | Per-machine overrides; the documented slot an overlay can deploy into | No |
 
 Identity lives in `~/.gitconfig` deliberately: that is both the file `git config --global` edits and the file that wins, so there is no silent-override trap. `etc/install` seeds it from `gh api user` when `user.email` is unset — but see `install-deploy.md` for why that usually no-ops on a first run. Without an identity, the first `git commit` on a fresh box fails with "Author identity unknown".
 
-**`etc/deploy` creates `~/.gitconfig` if absent, before it links anything — do not remove that step.** Since `git config --global` falls back to `~/.config/git/config` when `~/.gitconfig` does not exist, and git *follows the symlink and rewrites the target*, a plain `git config --global user.email …` on a box without `~/.gitconfig` writes a personal address straight into a tracked file of this public repo. Verified, not theoretical. Creating the file removes the fallback permanently and makes the "identity lives in `~/.gitconfig`" rule self-enforcing. An existing file is never modified.
+**`etc/deploy` creates `~/.gitconfig` if absent, before it links anything — do not remove that step.** Since `git config --global` falls back to `~/.config/git/config` when `~/.gitconfig` does not exist, and git *follows the symlink and rewrites the target*, a plain `git config --global user.email …` on a box without `~/.gitconfig` writes a personal address straight into a tracked, published file. Verified, not theoretical. Creating the file removes the fallback permanently and makes the "identity lives in `~/.gitconfig`" rule self-enforcing. An existing file is never modified.
 
 A relative `[include] path` resolves against the directory of the *symlink* (`~/.config/git/`), not the symlink's target inside the repo, so `config.local` can never accidentally resolve to a tracked file. A missing include is silently ignored, so the slot is safe to leave unsatisfied.
 

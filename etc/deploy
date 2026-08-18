@@ -11,10 +11,11 @@
 # $OS is one of: macos, linux, wsl
 # Windows: use etc/deploy.ps1 (planned).
 #
-# Private overlay: if $DOTFILES_PRIVATE is set, the same layout under that
-# directory is overlaid on top, so private files override public ones with
-# the same destination path. Easiest way to set it is to run the private
-# repo's own etc/deploy, which sets the env var and execs back into here.
+# Overlay (optional): if $DOTFILES_PRIVATE names a directory that mirrors the
+# layout above, the same linking runs against it after this repo, so an overlay
+# file wins wherever it shares a destination path. Nothing here requires an
+# overlay to exist; see "Extending with an overlay" in README.md for the
+# contract an overlay is expected to honour.
 
 set -e
 
@@ -49,8 +50,8 @@ if [ -n "${DOTFILES_PRIVATE:-}" ] && [ -d "$DOTFILES_PRIVATE" ]; then
 fi
 
 echo "Detected OS:  $OS"
-echo "Public:       $DOTFILES"
-[ -n "$PRIVATE" ] && echo "Private:      $PRIVATE" || echo "Private:      (none — run dotfiles-private/etc/deploy to overlay)"
+echo "Source:       $DOTFILES"
+[ -n "$PRIVATE" ] && echo "Overlay:      $PRIVATE" || echo "Overlay:      (none — set \$DOTFILES_PRIVATE to add one)"
 [ $DRY_RUN -eq 1 ] && echo "(dry-run — no changes will be made)"
 echo
 
@@ -150,7 +151,7 @@ deploy_tree() {
 # otherwise falls back to $XDG_CONFIG_HOME/git/config — which the next step
 # symlinks into this repo. Git follows the symlink and rewrites the *target*, so
 # on a box without ~/.gitconfig a plain `git config --global user.email ...`
-# silently lands a personal address in a tracked file of a public repo.
+# silently lands a personal address in a tracked file of this repo.
 #
 # Creating the file removes the fallback for good: ~/.gitconfig is then both the
 # write target and, being read after ~/.config/git/config, the winner for
@@ -170,22 +171,22 @@ ensure_gitconfig() {
 # Machine-local git config. Untracked on purpose: this is where identity and
 # anything else host-specific belongs, and it is what `git config --global`
 # edits. Shared, non-personal settings come from ~/.config/git/config, which
-# etc/deploy symlinks into the dotfiles repo.
+# etc/deploy symlinks in from the dotfiles repo.
 #
 # Git reads ~/.config/git/config first and this file second, so a single-valued
 # key set here wins. Created by etc/deploy so that `git config --global` can
-# never fall back to writing into the (public) repo.
+# never fall back to writing into a tracked file.
 EOF
   echo "created: $gc (keeps 'git config --global' out of this repo)"
 }
 ensure_gitconfig
 
-echo "--- public ---"
+echo "--- base ---"
 deploy_tree "$DOTFILES"
 
 if [ -n "$PRIVATE" ]; then
   echo
-  echo "--- private overlay ---"
+  echo "--- overlay ---"
   deploy_tree "$PRIVATE"
 fi
 

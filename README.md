@@ -97,14 +97,14 @@ also skipped: native Windows has no tmux, and WSL has its own filesystem.
 
 ## git identity
 
-This repo is public, so it carries no `user.name`/`user.email` — the deployed
-`~/.config/git/config` has only portable settings. On a fresh machine the first
-`git commit` therefore fails with `Author identity unknown` until you set one.
+Nothing personal is tracked here, so the repo carries no `user.name`/`user.email`
+— the deployed `~/.config/git/config` has only portable settings. On a fresh
+machine the first `git commit` therefore fails with `Author identity unknown`
+until you set one.
 
-`etc/install` seeds it from your gh account, but only if you are already logged
-in; on a first run `gh auth login` has not happened yet (it comes below), so the
-installer skips the step and says so at the end. Either re-run it afterwards, or
-set the identity by hand:
+`etc/install` seeds it from your GitHub account, but only if `gh` is already
+authenticated — and on a fresh box it is not, because that same run is what
+installs `gh`. The installer skips the step and prints these options at the end:
 
 ```bash
 gh auth login && bash etc/install    # a re-run seeds it from your account
@@ -119,39 +119,47 @@ file that wins is also the file `git config --global` edits. Per-machine
 overrides that are not identity can go in `~/.config/git/config.local`, which the
 deployed config includes automatically when present.
 
-## Optional: private overlay
+## Extending with an overlay
 
-User-specific files (personal bookmarks, identity-bearing config, private
-package manifests) live in a separate private repo at
-`kenjisato/dotfiles-private`. After the main setup completes (`gh` and
-`ghq` are now installed), authenticate and clone it as an overlay:
+This repo is self-sufficient: `etc/install` and `etc/deploy` are all you need,
+and nothing here assumes a second repository exists. Anything personal —
+identity, credentials, machine-specific paths, private package lists — is
+deliberately absent, so if you want to carry such files across your own
+machines, keep them in a separate directory of your own and layer it on top.
 
-### macOS / Linux / WSL2
+Set `$DOTFILES_PRIVATE` to that directory. `etc/deploy` runs the same linking
+against it *after* this repo, so an overlay file wins wherever it shares a
+destination path:
 
 ```bash
-gh auth login
-ghq get kenjisato/dotfiles-private
-PRIVATE=$(ghq list -p | grep dotfiles-private)
-bash "$PRIVATE/etc/install"
-bash "$PRIVATE/etc/deploy"
+DOTFILES_PRIVATE=/path/to/your/overlay bash etc/deploy
 ```
 
-### Windows (PowerShell)
+`$DOTFILES` overrides the location of *this* repo if it isn't at `~/dotfiles`
+(`$HOME\dotfiles` on Windows). `etc/undeploy` removes symlinks pointing into
+either directory.
 
-```powershell
-gh auth login
-ghq get kenjisato/dotfiles-private
-$private = ghq list -p | Select-String dotfiles-private
-cd $private
-pwsh -File etc\install.ps1
-pwsh -File etc\deploy.ps1
-```
+### The contract an overlay must honour
 
-`dotfiles-private/etc/deploy` is a thin shim — it sets `$DOTFILES_PRIVATE`
-to its own location and execs the public `etc/deploy`. The public deploy
-then overlays private files on top of public ones (same destination path
-→ private wins). Override the public repo location with `$DOTFILES` if
-it isn't at `~/dotfiles` (or `$HOME\dotfiles` on Windows).
+| Requirement | Why |
+|---|---|
+| Mirror this layout — `home/`, `shell/`, `xdg-config/`, `bin/`, each with `common/` and per-OS subdirectories | `etc/deploy` runs the identical tree walk against the overlay; anything outside those paths is ignored |
+| Prefer your own filenames over reusing one of ours | Same destination path means your file **replaces** ours, so later improvements here never reach your machines. The `*.local` slots below exist for this |
+| Read `~/.config/dotfiles/host-profile` if you need the host profile | That marker is the documented interface, so `--profile server` set here also applies to your installer |
+| Keep the overlay's own bootstrap instructions in the overlay | They depend on where you keep it, which is none of this repo's business |
+
+Extension points this repo deliberately leaves open:
+
+| Slot | Purpose |
+|---|---|
+| `~/.config/git/config.local` | git settings; included automatically by the deployed `git/config` when present |
+| `~/.shell.local/*.sh` | zsh + bash snippets, sourced at the end of both rc files |
+| `~/.config/cdmarks.local.tsv` | extra `cdb` bookmarks, merged with the tracked ones |
+| `profile.local.ps1` next to `$PROFILE` | PowerShell overlay, dot-sourced by the tracked profile |
+| `~/.gitconfig` | identity and credential helpers; never tracked here |
+
+A missing slot is always a silent no-op, so leaving every one of them empty is a
+supported configuration.
 
 ## Previewing and undoing
 
