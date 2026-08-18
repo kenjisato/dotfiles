@@ -87,7 +87,7 @@ When `$DOTFILES_PRIVATE` is set, the same `deploy_tree` function runs against th
 
 The zsh config is layered:
 
-1. **`shell/zsh/.zshenv`** — Always sourced. Sets PATH, LANG, GOPATH, fpath.
+1. **`shell/zsh/.zshenv`** — Always sourced. Sets PATH, LANG, fpath.
 2. **`shell/zsh/.zprofile`** — Login shells. Initializes Homebrew (Apple Silicon, Intel, or Linuxbrew).
 3. **`shell/zsh/.zshrc`** — Interactive shells. Sources `~/.zsh/[0-9]*.{zsh,sh}` in numeric order; initializes compinit and starship.
 
@@ -101,6 +101,14 @@ The zsh config is layered:
 - `40_conda.zsh` — Conda init (no-op if conda absent)
 - `90_sci.zsh` — R/Python science environment
 
+The bash config mirrors that split, but with one rule that is easy to get wrong:
+
+1. **`shell/bash/.bash/env.sh`** — PATH, LANG, cargo, conda. Sourced by **both** `.bash_profile` and `.bashrc`, and written to be idempotent (dirs are added only when they exist and are not already on PATH), because a login shell sources it twice.
+2. **`shell/bash/.bash_profile`** — Login shells. Sources `env.sh`, then `~/.bashrc`.
+3. **`shell/bash/.bashrc`** — Sources `env.sh` first (above the `[ -z "$PS1" ] && return` guard, so a non-interactive `ssh host <command>` gets the same PATH), then interactive settings.
+
+**Never put environment setup in `.bash_profile` alone.** bash reads `.bash_profile` only for *login* shells; desktop terminal emulators (lxterminal, gnome-terminal, konsole, …) spawn a **non-login** interactive shell that reads only `.bashrc`. Anything defined solely in `.bash_profile` is therefore missing in every terminal window on a Linux desktop — which is exactly how `~/.local/bin` fell off PATH there while working fine over SSH. This asymmetry does not exist on the zsh side, where `.zshenv` is read unconditionally.
+
 `~/.shell/*.sh` is sourced by both shells at the end of their rc:
 - `cdb.sh` — bookmark navigation (reads `~/.config/cdmarks.tsv` + `~/.config/cdmarks.local.tsv`)
 
@@ -108,7 +116,7 @@ The zsh config is layered:
 
 ## Key Paths
 
-- `GOPATH=$HOME/local`
+- `GOPATH`/`GOBIN` are intentionally **unset** — Go's own default (`~/go` since 1.8) is used, and only `~/go/bin` is added to PATH. Under modules, GOPATH names just the module cache and the `go install` target, so overriding it only makes every Go tool's "add `~/go/bin` to your PATH" instructions wrong
 - ghq root: `~/ghq` (default; no env var or git config needed)
 - `VENVROOT=~/.envs`
 - `~/bin` is on PATH (managed by deploy)

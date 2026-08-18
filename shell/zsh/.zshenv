@@ -10,9 +10,11 @@
 # locale at the OS level instead — see dotfiles-private docs/howto/wsl-locale.md.
 export LANG="en_US.UTF-8"
 
-# Settings for golang
-export GOPATH="$HOME/local"
-export GOBIN="$GOPATH/bin"
+# Go: deliberately no GOPATH/GOBIN. Since Go 1.8 an unset GOPATH defaults to
+# ~/go, and since modules (1.11, default from 1.16) it only names the module
+# cache (~/go/pkg/mod) and the `go install` target (~/go/bin) — src/ is unused.
+# Leaving it unset keeps us on the default every Go tool's README assumes, so
+# only ~/go/bin needs to be on PATH (added at the tail below).
 
 typeset -gx -U path
 path=( \
@@ -29,7 +31,7 @@ path=( \
     ~/Library/TinyTeX/bin/*(N-/) \
     ~/.TinyTeX/bin/*(N-/) \
     "$path[@]" \
-    "$GOBIN" \
+    ~/go/bin(N-/) \
     )
 
 typeset -gx -U fpath

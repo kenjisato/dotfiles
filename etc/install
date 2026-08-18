@@ -100,10 +100,30 @@ if [ -O "$brew_share" ]; then
   chmod g-w,o-w "$brew_share"
 fi
 
-# Set zsh as default shell
-if [ "${SHELL}" != "$(which zsh)" ]; then
-  echo "Changing default shell to zsh..."
-  chsh -s "$(which zsh)"
+# Set zsh as the login shell.
+#
+# Compare against the passwd entry, NOT $SHELL: $SHELL is inherited from the
+# session that spawned this shell, so right after a chsh it still reports the
+# old shell. A $SHELL-based check therefore re-runs chsh (and its password
+# prompt) on every install until the next logout.
+SHELL_CHANGED=0
+ZSH_PATH="$(command -v zsh || true)"
+if [ -z "$ZSH_PATH" ]; then
+  echo "zsh not found; skipping login-shell change."
+else
+  # getent is Linux-only in practice; fall back to $SHELL elsewhere.
+  CURRENT_SHELL="$(getent passwd "$(id -un)" 2>/dev/null | cut -d: -f7)"
+  [ -z "$CURRENT_SHELL" ] && CURRENT_SHELL="$SHELL"
+  if [ "$CURRENT_SHELL" != "$ZSH_PATH" ]; then
+    # chsh refuses any shell missing from /etc/shells — common when zsh comes
+    # from Homebrew rather than the system package manager.
+    if [ -f /etc/shells ] && ! grep -qxF "$ZSH_PATH" /etc/shells; then
+      echo "Adding $ZSH_PATH to /etc/shells (needs sudo)..."
+      echo "$ZSH_PATH" | sudo tee -a /etc/shells > /dev/null
+    fi
+    echo "Changing login shell to $ZSH_PATH..."
+    chsh -s "$ZSH_PATH" && SHELL_CHANGED=1
+  fi
 fi
 
 # Install Claude Code via official native installer (early, so a failure in the
@@ -170,4 +190,9 @@ if command -v gh > /dev/null 2>&1 && gh auth status > /dev/null 2>&1; then
 fi
 
 echo "$(tput setaf 2)Install complete!$(tput sgr0)"
-echo "Please log out and log back in for the shell change to take effect."
+if [ "$SHELL_CHANGED" = 1 ]; then
+  echo
+  echo "Login shell is now $ZSH_PATH, but running processes still carry the old"
+  echo "\$SHELL. Terminal emulators launch \$SHELL, so a new terminal window is"
+  echo "NOT enough — log out of the whole desktop/SSH session (or reboot) first."
+fi

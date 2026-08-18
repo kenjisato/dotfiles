@@ -21,7 +21,11 @@ bash etc/install   # Homebrew + brew bundle + zsh shell + Rust + uv + cargo tool
 bash etc/deploy
 ```
 
-Log out and back in for the zsh default-shell change to take effect.
+`etc/install` sets zsh as the login shell, but opening a new terminal window is
+**not** enough to pick it up: terminal emulators launch `$SHELL`, which every
+process inherited from the session that was already running when `chsh` ran. Log
+out of the entire desktop or SSH session (or reboot), then check with
+`echo $SHELL`.
 
 ### Ubuntu / WSL2
 
@@ -29,7 +33,7 @@ Log out and back in for the zsh default-shell change to take effect.
 # 1. apt prerequisites
 sudo apt update && sudo apt install -y curl git zsh build-essential locales
 
-# The shell config sets LANG=en_US.UTF-8 (shell/bash/.bash_profile,
+# The shell config sets LANG=en_US.UTF-8 (shell/bash/.bash/env.sh,
 # shell/zsh/.zshenv). Minimal WSL/container images don't ship that locale, so
 # generate it or every shell prints "setlocale: cannot change locale".
 sudo locale-gen en_US.UTF-8 && sudo update-locale

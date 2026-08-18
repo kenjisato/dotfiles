@@ -1,3 +1,9 @@
+# PATH, locale, cargo, conda. Shared with ~/.bash_profile and
+# idempotent, so the double source in a login shell is harmless. Deliberately
+# above the interactive guard: a non-interactive `ssh host <command>` reads
+# ~/.bashrc (Debian's bash) and needs the same PATH.
+[ -r "$HOME/.bash/env.sh" ] && . "$HOME/.bash/env.sh"
+
 # If not running interactively, don't do anything
 [ -z "$PS1" ] && return
 
@@ -113,10 +119,6 @@ elif [ "$(uname)" = 'Linux' ]; then
   if [[ "$(uname -r)" = *microsoft* ]]; then
     . "$HOME/.bash/wsl.sh"
   fi
-fi
-
-if type cargo > /dev/null 2>&1; then
-  . "$HOME/.cargo/env"
 fi
 
 # ghq — repository manager. brew install drops bash completion into
