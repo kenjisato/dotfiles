@@ -1,201 +1,62 @@
 # CLAUDE.md — dotfiles (public)
 
-Personal dotfiles for macOS, Linux, and WSL2 (Windows support is partial — PowerShell only). Deployment uses **per-target symlinks** driven by `etc/deploy`, which detects the host OS and links only the relevant subset of files.
+Personal dotfiles for macOS, Linux, and WSL2 (Windows support is partial — PowerShell only). `etc/deploy` detects the host OS and creates **per-target symlinks**, linking only the relevant subset of files. `etc/install` provisions the tools those files assume.
 
-A private overlay repo (`dotfiles-private`) can be layered on top via `$DOTFILES_PRIVATE`. When editing both repos together, use `dotfiles-private` as the entry point — its `CLAUDE.md` describes the two-repo workflow.
+Two goals shape almost every decision here:
 
-## Setup Commands
+1. **The public repo alone must be enough.** `bash etc/install && bash etc/deploy` on a fresh box has to leave a machine you can actually work on, with no private repo and no manual steps beyond what the installer prints.
+2. **Nothing personal ever lands in a tracked file.** This repo is public. Identity, secrets, and host-specific values live in untracked files that the deployed config includes.
+
+A private overlay repo (`dotfiles-private`) layers on top via `$DOTFILES_PRIVATE`. When editing both repos together, use `dotfiles-private` as the entry point — its `CLAUDE.md` describes the two-repo workflow.
+
+## Setup
 
 ```bash
-bash etc/install            # Homebrew + brew bundle, zsh, Rust, uv, uv tools, cargo tools
-bash etc/install --profile server  # headless box: skip GUI app casks (keep fonts + r-app)
-bash etc/deploy             # Detect OS and create symlinks
-bash etc/deploy --dry-run   # Preview what would be linked
+bash etc/install                   # brew bundle, zsh login shell, Rust, uv/cargo tools, Claude Code, Linux fonts
+bash etc/install --profile server  # headless box: skip GUI casks (the profile is remembered per machine)
+bash etc/deploy                    # detect OS, create symlinks (idempotent)
+bash etc/deploy --dry-run          # preview
+bash etc/undeploy                  # remove only symlinks pointing into either repo
 ```
 
-**Host profile is remembered.** `--profile server` is persisted by default to a
-per-machine marker (`~/.config/dotfiles/host-profile`), so plain `bash etc/install`
-reruns keep the server profile — no need to re-pass the flag. The marker is shared
-with `dotfiles-private`'s installer, so both always resolve to the same profile.
-Clear it with `--profile desktop` (back to the default); use `--profile server --no-save`
-for a one-off test that must not stick. Precedence: `--profile` > `$DOTFILES_HOST_PROFILE`
-> marker > desktop. `etc/install` also runs `gh auth setup-git` when `gh` is
-authenticated, so HTTPS `git push` doesn't prompt for a password, and seeds
-`user.name`/`user.email` from the gh account when git has no identity yet — see
-[Global git config](#global-git-config-two-files-and-which-one-wins).
+Windows: `pwsh -File etc\install.ps1`, then `pwsh -File etc\deploy.ps1`.
 
-`etc/deploy` is idempotent. It refuses to run if `~/.config` is itself a symlink (the legacy whole-directory layout) and prints migration instructions.
-
-**`etc/install` must stay runnable end-to-end with nothing but this repo.** Two rules follow from that, both learned the hard way:
-
-- It puts `~/.local/bin` on **its own** `PATH` early. `uv` and the Claude Code installer land there, and later steps invoke what they just installed. Being on `PATH` in a *deployed shell* is irrelevant — the installer runs before `etc/deploy`, usually under bash. Without it `uv tool install` failed with `uv: command not found` and `set -e` killed the installer before any of the git/gh configuration at the bottom ran.
-- The `uv`/`cargo` package loops are **non-fatal** (`|| echo warning`). The configuration steps at the end are what make a fresh box usable; no single optional dev tool is worth skipping them. Keep new package loops non-fatal and put configuration after them, or move it earlier.
-
-## Repository Structure
+## Layout
 
 ```
-dotfiles/
-├── home/
-│   ├── common/         # ~/.* files for any OS (.tmux.conf, .Rprofile, ...)
-│   ├── macos/
-│   ├── linux/
-│   ├── wsl/
-│   └── windows/
-├── shell/
-│   ├── zsh/            # ~/.zshenv, ~/.zprofile, ~/.zshrc, ~/.zsh/
-│   ├── bash/           # ~/.bash_profile, ~/.bashrc, ~/.bash/
-│   └── shared/         # ~/.shell/<file>.sh — sourced by both .zshrc and .bashrc
-├── xdg-config/         # symlinked into ~/.config/<dir> per subdirectory
-│   ├── common/         # cdmarks.tsv, gh/, git/, nvim/, rstudio/, uv/
-│   ├── macos/          # karabiner/
-│   ├── linux/          # lxterminal/, mozc/
-│   ├── wsl/
-│   └── windows/        # NuGet/, powershell/, windows-terminal/ (overlay.json)
-├── bin/
-│   ├── common/
-│   ├── macos/          # battery (use pmset — macOS-only)
-│   ├── linux/
-│   ├── wsl/
-│   └── windows/
-├── pkg/
-│   ├── Brewfile                  # cross-platform; casks gated by `if OS.mac?`, GUI apps further gated by server profile (HOMEBREW_DOTFILES_HOST_PROFILE)
-│   ├── uv-tools.txt              # Python dev tools installed via `uv tool install`
-│   ├── cargo-tools.txt           # Rust tools installed via `cargo install`
-│   ├── winget-packages.txt       # Windows; installed on every host
-│   ├── winget-packages.metal.txt # Windows; bare-metal only (skipped on Parallels)
-│   ├── windows-fonts.txt         # Windows; GitHub-released fonts (per-user HKCU install)
-│   └── linux-fonts.txt           # Linux; GitHub-released fonts (per-user ~/.local/share/fonts)
-└── etc/
-    ├── install                   # bash: brew bundle, zsh shell, Rust, uv, cargo tools, Claude Code, Linux fonts
-    ├── install.ps1               # winget + Claude Code + install-windows-fonts.ps1 + wt-apply-settings.ps1
-    ├── install-windows-fonts.ps1 # reads pkg/windows-fonts.txt, installs TTFs to per-user HKCU
-    ├── install-linux-fonts       # reads pkg/linux-fonts.txt, installs TTFs to ~/.local/share/fonts
-    ├── wt-apply-settings.ps1     # deep-merges overlay.json into Windows Terminal settings.json
-    ├── deploy                    # bash: create symlinks (per-OS dispatch)
-    ├── deploy.ps1                # PowerShell: create symlinks
-    ├── undeploy                  # bash: remove symlinks pointing into the repo (incl. private overlay)
-    └── undeploy.ps1              # PowerShell counterpart of undeploy
+home/        ~/.* dotfiles              shell/   zsh/, bash/, shared/ rc files
+xdg-config/  ~/.config/<dir>            bin/     ~/bin scripts
+pkg/         package + font manifests   etc/     install / deploy / undeploy
 ```
 
-## Deploy Behavior
+`home/`, `xdg-config/`, and `bin/` each split into `common/` plus one directory per OS (`macos/`, `linux/`, `wsl/`, `windows/`); deploy links `common/` and the detected OS only, so putting a file in the wrong OS directory silently means it is never linked. `shell/` splits by shell instead (`zsh/`, `bash/`, `shared/`) and is linked on every Unix host.
 
-`etc/deploy` detects the OS via `uname` (Darwin → `macos`, Linux → `linux`, Linux + `microsoft` in `/proc/version` → `wsl`) and links:
+## Don'ts
 
-| Source | Destination |
+Every item below has actually been violated in this repo and cost real debugging. The reasoning behind each one is in `.claude/rules/`, which loads when you open the relevant files.
+
+- **Never put identity or secrets in a tracked file.** `user.name`/`user.email` go in `~/.gitconfig`, never in `xdg-config/common/git/config`.
+- **Never remove the `~/.gitconfig` creation step from `etc/deploy`.** Without it `git config --global` follows a symlink and writes a personal address into this repo's tracked git config.
+- **Never put `commit.template` in the tracked git config.** If the template file is missing, `git commit` without `-m` aborts with exit 128 on every machine that lacks it.
+- **Never put environment setup in `.bash_profile` alone.** Desktop terminal emulators spawn *non-login* shells that read only `.bashrc`. It belongs in `shell/bash/.bash/env.sh`, which both source.
+- **Never assume `etc/install` can call a tool it just installed.** The installer runs before `etc/deploy` and usually under bash, so it must put the install target (`~/.local/bin`, `~/.cargo/bin`) on its *own* `PATH`.
+- **Never make a package loop in `etc/install` fatal.** `set -e` plus one unavailable package used to skip every configuration step that followed. Warn and continue.
+- **Never call `git` on a timer without `--no-optional-locks`.** `git status` takes `.git/index.lock`, so a status-bar or prompt caller breaks interactive `git add`/`git commit` intermittently.
+- **Never hardcode a `gitleaks` subcommand.** An unknown subcommand exits `1` — the same code as "leaks found" — so a removed one blocks every commit with a misleading message.
+
+## Where the detail lives
+
+Nothing above is the whole story. Rationale, verified behaviours, and per-area rules load on demand:
+
+| File | Loads when you touch |
 |---|---|
-| `home/{common,$OS}/*` | `~/*` |
-| `shell/{zsh,bash,shared}/*` | `~/*` |
-| `xdg-config/{common,$OS}/*` | `~/.config/*` (per file, preserving subdirs) |
-| `bin/{common,$OS}/*` | `~/bin/*` |
+| `shell/CLAUDE.md` | anything under `shell/` — zsh and bash layering, load order, key paths |
+| `.claude/rules/install-deploy.md` | `etc/*` — installer invariants, host profiles, deploy/link semantics |
+| `.claude/rules/git-config.md` | `xdg-config/common/git/*` — the two global config files and the gitleaks hook |
+| `.claude/rules/git-in-timers.md` | `bin/*`, `.tmux.conf` — the `--no-optional-locks` rule |
+| `.claude/rules/fonts.md` | font manifests and installers — one Nerd font per platform, three mechanisms |
+| `.claude/rules/lxterminal.md` | `xdg-config/linux/lxterminal/*` — an app that writes back through its symlink |
 
-Pre-existing non-symlink files at the destination are skipped with a notice. `.DS_Store`, `.gitkeep`, and `*.example` files are ignored.
+`shell/` uses a nested `CLAUDE.md` rather than a path-scoped rule on purpose: it is full of dot-prefixed files *and* dot-prefixed directories (`.bash/`, `.zsh/`), and a directory-triggered file cannot be defeated by a glob that ignores leading dots. Everything else has ordinary filenames, so a `paths:` rule is fine.
 
-When `$DOTFILES_PRIVATE` is set, the same `deploy_tree` function runs against the private repo after the public one, so private files at the same destination path override public ones.
-
-## Shell Configuration Architecture
-
-The zsh config is layered:
-
-1. **`shell/zsh/.zshenv`** — Always sourced. Sets PATH, LANG, fpath.
-2. **`shell/zsh/.zprofile`** — Login shells. Initializes Homebrew (Apple Silicon, Intel, or Linuxbrew).
-3. **`shell/zsh/.zshrc`** — Interactive shells. Sources `~/.zsh/[0-9]*.{zsh,sh}` in numeric order; initializes compinit and starship.
-
-**`shell/zsh/.zsh/` load order:**
-- `00_aliases.zsh` — Aliases
-- `10_completion.zsh` — Extra completion paths
-- `20-fzf.zsh` — Ctrl+] jumps to ghq-managed repos via `ghq list -p` + fzf
-- `30_prompt.zsh` — Fallback prompt (skipped when starship is available)
-- `31_history.zsh` — History settings (1M entries)
-- `32_editors.zsh` — Sets nvim as EDITOR/GIT_EDITOR/SVN_EDITOR; aliases `vim` to `nvim`
-- `40_conda.zsh` — Conda init (no-op if conda absent)
-- `90_sci.zsh` — R/Python science environment
-
-The bash config mirrors that split, but with one rule that is easy to get wrong:
-
-1. **`shell/bash/.bash/env.sh`** — PATH, LANG, cargo, conda. Sourced by **both** `.bash_profile` and `.bashrc`, and written to be idempotent (dirs are added only when they exist and are not already on PATH), because a login shell sources it twice.
-2. **`shell/bash/.bash_profile`** — Login shells. Sources `env.sh`, then `~/.bashrc`.
-3. **`shell/bash/.bashrc`** — Sources `env.sh` first (above the `[ -z "$PS1" ] && return` guard, so a non-interactive `ssh host <command>` gets the same PATH), then interactive settings.
-
-**Never put environment setup in `.bash_profile` alone.** bash reads `.bash_profile` only for *login* shells; desktop terminal emulators (lxterminal, gnome-terminal, konsole, …) spawn a **non-login** interactive shell that reads only `.bashrc`. Anything defined solely in `.bash_profile` is therefore missing in every terminal window on a Linux desktop — which is exactly how `~/.local/bin` fell off PATH there while working fine over SSH. This asymmetry does not exist on the zsh side, where `.zshenv` is read unconditionally.
-
-`~/.shell/*.sh` is sourced by both shells at the end of their rc:
-- `cdb.sh` — bookmark navigation (reads `~/.config/cdmarks.tsv` + `~/.config/cdmarks.local.tsv`)
-
-`~/.shell.local/*.sh` is sourced immediately after, guarded by `[ -d ~/.shell.local ]`. This directory is **untracked** and per-machine — drop installer-managed init here (juliaup, asdf, etc.) so it doesn't land in the symlinked, tracked rc files.
-
-## Key Paths
-
-- `GOPATH`/`GOBIN` are intentionally **unset** — Go's own default (`~/go` since 1.8) is used, and only `~/go/bin` is added to PATH. Under modules, GOPATH names just the module cache and the `go install` target, so overriding it only makes every Go tool's "add `~/go/bin` to your PATH" instructions wrong
-- ghq root: `~/ghq` (default; no env var or git config needed)
-- `VENVROOT=~/.envs`
-- `~/bin` is on PATH (managed by deploy)
-
-## Global git config (two files, and which one wins)
-
-Git reads **both** global config files, in this order: `~/.config/git/config`, then `~/.gitconfig`. The XDG file is *not* ignored when `~/.gitconfig` exists — a natural assumption, and wrong. For a single-valued key the file read **last wins**, so anything in `~/.gitconfig` overrides the deployed config; multi-valued keys (`credential.helper`, …) accumulate from both. `git config --global` **writes** to `~/.gitconfig` whenever that file exists, and `gh auth setup-git` creates it.
-
-The split follows from that:
-
-| Where | What | Tracked? |
-|---|---|---|
-| `xdg-config/common/git/config` → `~/.config/git/config` | Portable, non-personal settings + `core.hooksPath` + `[include] path = config.local` | Yes — **never put identity or secrets here, this repo is public** |
-| `~/.gitconfig` | `user.name` / `user.email`, `gh` credential helpers | No |
-| `~/.config/git/config.local` | Per-machine overrides; the slot a private overlay can deploy | No |
-
-Identity lives in `~/.gitconfig` deliberately: that is both the file `git config --global` edits and the file that wins, so there is no silent-override trap. `etc/install` seeds it from `gh api user` when `user.email` is unset — but note the ordering, since README runs `gh auth login` *after* the installer: on a genuinely first run gh is installed and unauthenticated, the seeding is skipped, and the installer's closing message tells you to re-run it or set the identity by hand. Without this, the first `git commit` on a fresh box fails with "Author identity unknown".
-
-A relative `[include] path` resolves against the directory of the *symlink* (`~/.config/git/`), not the symlink's target inside the repo, so `config.local` can never accidentally resolve to a tracked file. A missing include is silently ignored.
-
-**`etc/deploy` creates `~/.gitconfig` if absent, before it links anything** — do not remove that step. Since `git config --global` falls back to `~/.config/git/config` when `~/.gitconfig` does not exist, and git *follows the symlink and rewrites the target*, a plain `git config --global user.email …` on a box without `~/.gitconfig` writes a personal address straight into a tracked file of this public repo. Verified, not theoretical. Creating the file removes the fallback permanently and makes the "identity lives in `~/.gitconfig`" rule self-enforcing. An existing file is never modified.
-
-`commit.template` must **not** go in the tracked config: if the template file is absent, `git commit` without `-m` aborts with `fatal: could not read '<path>'` (exit 128). Put it in `config.local`.
-
-## Global git pre-commit (gitleaks)
-
-`core.hooksPath = ~/.config/git/hooks` ships in the tracked `xdg-config/common/git/config` above, and `etc/deploy` symlinks `xdg-config/common/git/hooks/pre-commit` into that directory — so **the hook needs `etc/deploy` to have run**, not just `etc/install`. Windows is the exception: `etc/deploy.ps1` links only the hook, not the config file, so `etc/install.ps1` still sets `core.hooksPath` via `git config --global`.
-
-The result: every `git commit` on this machine scans the staged diff with gitleaks before allowing the commit. Bypass with `git commit --no-verify`; gitleaks itself can be silenced per-pattern via a repo-local `.gitleaks.toml`. CI should also scan on push as a backstop — pre-commit is a guard against *accidents*, not a security boundary.
-
-The hook picks its subcommand at runtime: gitleaks 8.19 superseded `protect` with `git`, and `protect` is already hidden from `--help` in 8.30. This matters because an unknown subcommand exits **1**, the same code as "leaks found" — so hardcoding a removed subcommand would block every commit with a misleading secret-found message rather than failing visibly.
-
-## Display scripts that call git
-
-Anything that shells out to `git` on a **timer** for display purposes (tmux `pane-border-format` / status bar, prompts, editor gutters) must pass `--no-optional-locks`. `git status` looks read-only but refreshes the index stat cache, taking `.git/index.lock` to do it — so a periodic caller makes interactive `git add`/`git commit` in that repo fail intermittently with `Unable to create '.git/index.lock': File exists`. The flag suppresses that write; output is unchanged. Currently applies to `bin/common/tmux-pane-border`, re-evaluated every `status-interval` (15s) per bordered pane. Read-only plumbing (`rev-parse`, `symbolic-ref`) doesn't take the lock, but adding the flag by default costs nothing.
-
-## Fonts
-
-Three platforms, three mechanisms, one intent — a Nerd-patched font with Japanese coverage so the starship prompt and Japanese text both render:
-
-| OS | How |
-|---|---|
-| macOS | `pkg/Brewfile` casks (`font-hack-nerd-font`, `font-hackgen-nerd`, …), kept on the server profile too since headless Quarto/Typst/LaTeX rendering needs them |
-| Windows | `etc/install-windows-fonts.ps1` reads `pkg/windows-fonts.txt`, installs per-user to HKCU |
-| Linux | `etc/install-linux-fonts` reads `pkg/linux-fonts.txt`, installs per-user to `~/.local/share/fonts` |
-
-Debian/Ubuntu ship **no** Nerd-patched font in apt, which is why Linux needs the GitHub-release path rather than a package name. `pkg/linux-fonts.txt` uses the same `owner/repo:asset-glob:font-glob` format as the Windows manifest so the two stay comparable — except that the Windows-only `@tag` form (repos publishing no releases) is unimplemented on Linux and warns rather than silently skipping.
-
-Idempotency is per-repo: `~/.local/share/fonts/<repo>/.release` records the installed release tag, and a run whose latest tag matches is a no-op. Delete the stamp to force a re-download. `etc/install` calls the script on Linux only, non-fatal like the package loops.
-
-Installing the font is not the same as *using* it — a terminal emulator with an explicit font setting still has to name it, though fontconfig will fall back to it for glyphs the configured font lacks. `xdg-config/linux/lxterminal/lxterminal.conf` names `HackGen Console NF`, and Windows Terminal gets it from `xdg-config/windows/windows-terminal/overlay.json`.
-
-## lxterminal.conf writes back through the symlink
-
-`xdg-config/linux/lxterminal/lxterminal.conf` is deployed as a symlink like everything else, but lxterminal is one of the few apps here that *writes* its own config. Verified on lxterminal 0.4.1:
-
-- It does **not** touch the file on ordinary startup or exit — only the Preferences dialog saves.
-- It serializes with `g_key_file_to_data` and writes with plain `open`/`write`, **not** a temp-file-plus-`rename`. So `open` follows the symlink: the link survives and the *tracked file in this repo* is what changes.
-
-Consequences, neither of them a disaster but both worth knowing:
-
-- Clicking OK in Preferences leaves uncommitted changes in this repo. `git diff` shows exactly what the dialog changed, which makes the GUI a usable editor for the tracked config — commit it, or `git checkout` to discard.
-- `g_key_file` is loaded without `KEEP_COMMENTS`, so a Preferences save **drops every comment** in the file. That is why the tracked conf carries no header comment: keeping it byte-identical to what lxterminal itself writes keeps those diffs minimal.
-
-On a Linux box that already has a real `~/.config/lxterminal/lxterminal.conf`, `etc/deploy` skips it with a notice rather than overwriting — move it aside and re-run deploy to adopt the tracked one. Only `OS=linux` gets this file; WSL resolves to `xdg-config/wsl/`, so a WSL box never receives it.
-
-Font size lives in this file too, so it is global rather than per-machine. If a second Linux box ever needs a different size, lxterminal has no include mechanism — either accept the diff or move to the `overlay.json` + apply-script pattern used for Windows Terminal.
-
-## Cross-Platform Notes
-
-- Homebrew shellenv detection in `shell/zsh/.zprofile`: `/opt/homebrew` (Apple Silicon), `/usr/local` (Intel), `/home/linuxbrew/.linuxbrew` (Linux).
-- `shell/bash/.bash/{mac,linux,wsl}.sh` are platform-specific stubs sourced from `.bashrc` based on `uname`.
-- Windows: use `pwsh -File etc/deploy.ps1`. The Windows deploy is intentionally narrow — PowerShell profile + cross-platform dotfiles that have a Windows runtime (`.vimrc`, `.vim/`). `.tmux.conf` is excluded since native Windows has no tmux and WSL has its own filesystem.
+Both mechanisms load lazily, so neither survives `/compact` the way this file does. That is why the hard rules are duplicated as one-liners in **Don'ts** above — keep them there, and keep the reasoning below.

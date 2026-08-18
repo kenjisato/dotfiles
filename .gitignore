@@ -9,3 +9,6 @@ xdg-config/macos/karabiner/automatic_backups/
 
 # brew bundle lockfile (created next to whichever Brewfile you run against)
 Brewfile.lock.json
+
+# Claude Code machine-local settings (.claude/rules/ and CLAUDE.md ARE tracked)
+.claude/settings.local.json
