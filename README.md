@@ -217,6 +217,7 @@ identity lines into `~/.gitconfig`, anything else machine-specific into
 - **Python**: [uv](https://docs.astral.sh/uv/) for package management
 - **Writing**: typst, pandoc
 - **Japanese input (Linux)**: Mozc keybindings in [xdg-config/linux/mozc/](xdg-config/linux/mozc/)
+- **Terminal (Linux)**: lxterminal colours/keybindings and the Nerd Font setting in [xdg-config/linux/lxterminal/](xdg-config/linux/lxterminal/). lxterminal writes this file back through the symlink when you use its Preferences dialog, so a GUI tweak shows up as an uncommitted change here
 
 ## Migrating from the old layout
 

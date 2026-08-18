@@ -48,7 +48,7 @@ dotfiles/
 ├── xdg-config/         # symlinked into ~/.config/<dir> per subdirectory
 │   ├── common/         # cdmarks.tsv, gh/, git/, nvim/, rstudio/, uv/
 │   ├── macos/          # karabiner/
-│   ├── linux/          # mozc/
+│   ├── linux/          # lxterminal/, mozc/
 │   ├── wsl/
 │   └── windows/        # NuGet/, powershell/, windows-terminal/ (overlay.json)
 ├── bin/
@@ -176,7 +176,23 @@ Debian/Ubuntu ship **no** Nerd-patched font in apt, which is why Linux needs the
 
 Idempotency is per-repo: `~/.local/share/fonts/<repo>/.release` records the installed release tag, and a run whose latest tag matches is a no-op. Delete the stamp to force a re-download. `etc/install` calls the script on Linux only, non-fatal like the package loops.
 
-Installing the font is not the same as *using* it — a terminal emulator with an explicit font setting (lxterminal's `fontname`, Windows Terminal's profile) still has to name it, though fontconfig will fall back to it for glyphs the configured font lacks.
+Installing the font is not the same as *using* it — a terminal emulator with an explicit font setting still has to name it, though fontconfig will fall back to it for glyphs the configured font lacks. `xdg-config/linux/lxterminal/lxterminal.conf` names `HackGen Console NF`, and Windows Terminal gets it from `xdg-config/windows/windows-terminal/overlay.json`.
+
+## lxterminal.conf writes back through the symlink
+
+`xdg-config/linux/lxterminal/lxterminal.conf` is deployed as a symlink like everything else, but lxterminal is one of the few apps here that *writes* its own config. Verified on lxterminal 0.4.1:
+
+- It does **not** touch the file on ordinary startup or exit — only the Preferences dialog saves.
+- It serializes with `g_key_file_to_data` and writes with plain `open`/`write`, **not** a temp-file-plus-`rename`. So `open` follows the symlink: the link survives and the *tracked file in this repo* is what changes.
+
+Consequences, neither of them a disaster but both worth knowing:
+
+- Clicking OK in Preferences leaves uncommitted changes in this repo. `git diff` shows exactly what the dialog changed, which makes the GUI a usable editor for the tracked config — commit it, or `git checkout` to discard.
+- `g_key_file` is loaded without `KEEP_COMMENTS`, so a Preferences save **drops every comment** in the file. That is why the tracked conf carries no header comment: keeping it byte-identical to what lxterminal itself writes keeps those diffs minimal.
+
+On a Linux box that already has a real `~/.config/lxterminal/lxterminal.conf`, `etc/deploy` skips it with a notice rather than overwriting — move it aside and re-run deploy to adopt the tracked one. Only `OS=linux` gets this file; WSL resolves to `xdg-config/wsl/`, so a WSL box never receives it.
+
+Font size lives in this file too, so it is global rather than per-machine. If a second Linux box ever needs a different size, lxterminal has no include mechanism — either accept the diff or move to the `overlay.json` + apply-script pattern used for Windows Terminal.
 
 ## Cross-Platform Notes
 
