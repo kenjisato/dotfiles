@@ -84,17 +84,27 @@ if ! command -v brew > /dev/null 2>&1; then
   done
 fi
 
-# Make ~/.local/bin callable for the rest of THIS script. uv and the Claude Code
-# native installer both land there, and the steps below invoke what they just
-# installed. It is on PATH in a deployed shell, but this installer runs before
-# etc/deploy and usually under bash, so that does not help here: without this,
-# `uv tool install` dies with "uv: command not found" and set -e aborts the
-# whole installer before the git and gh steps at the bottom ever run. It also
-# keeps the `command -v uv` / `command -v claude` guards honest on a re-run.
-case ":$PATH:" in
-  *":$HOME/.local/bin:"*) ;;
-  *) PATH="$HOME/.local/bin:$PATH" ;;
-esac
+# Make ~/.local/bin and ~/.cargo/bin callable for the rest of THIS script. uv,
+# the Claude Code native installer and rustup all install into one of the two,
+# and the steps below either invoke what they just installed or check whether it
+# is already present. Being on PATH in a *deployed* shell does not help: this
+# installer runs before etc/deploy, usually under bash.
+#
+# Both failure modes were real. `uv tool install` died with "uv: command not
+# found" and set -e took the rest of the installer with it, so the git and gh
+# steps at the bottom never ran. And `command -v rustup` always missed, so every
+# single run re-downloaded the rustup installer and re-synced the toolchain.
+#
+# Deliberately not guarded on [ -d ]: on a fresh box these directories do not
+# exist yet, and adding them up front is what makes a tool callable immediately
+# after the step that creates it.
+for dir in "$HOME/.local/bin" "$HOME/.cargo/bin"; do
+  case ":$PATH:" in
+    *":$dir:"*) ;;
+    *) PATH="$dir:$PATH" ;;
+  esac
+done
+unset dir
 export PATH
 
 # Install packages from Brewfile
