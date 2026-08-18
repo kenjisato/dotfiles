@@ -204,6 +204,16 @@ if [ -f "$DOTFILES/pkg/cargo-tools.txt" ]; then
   done < "$DOTFILES/pkg/cargo-tools.txt"
 fi
 
+# Fonts. macOS gets Nerd-patched and Japanese fonts from the Brewfile casks
+# above; Debian/Ubuntu ship none in apt, so pull them from GitHub releases
+# instead (mirrors etc/install.ps1 calling install-windows-fonts.ps1). Kept
+# non-fatal like the package loops — a missing glyph must not cost us the
+# configuration steps below.
+if [ "$(uname)" = Linux ] && [ -f "$DOTFILES/etc/install-linux-fonts" ]; then
+  bash "$DOTFILES/etc/install-linux-fonts" \
+    || echo "warning: font installation failed — continuing." >&2
+fi
+
 # core.hooksPath (the global gitleaks pre-commit scan) is no longer written to
 # ~/.gitconfig from here — it ships in the tracked xdg-config/common/git/config
 # that etc/deploy links to ~/.config/git/config. Run `bash etc/deploy` for the

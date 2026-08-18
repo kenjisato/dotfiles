@@ -204,12 +204,13 @@ identity lines into `~/.gitconfig`, anything else machine-specific into
 | [pkg/uv-tools.txt](pkg/uv-tools.txt) | Python dev tools installed via `uv tool install` |
 | [pkg/cargo-tools.txt](pkg/cargo-tools.txt) | Rust tools installed via `cargo install` |
 | [pkg/windows-fonts.txt](pkg/windows-fonts.txt) | Windows fonts (GitHub release ZIPs) installed per-user via HKCU |
+| [pkg/linux-fonts.txt](pkg/linux-fonts.txt) | Linux fonts (GitHub release ZIPs) installed per-user into `~/.local/share/fonts` |
 | [etc/](etc/) | Setup scripts |
 
 ## Key features
 
 - **Global git pre-commit secret scan**: `etc/install` sets `core.hooksPath = ~/.config/git/hooks` and `etc/deploy` symlinks `xdg-config/common/git/hooks/pre-commit` into it. Every commit on every repo runs [gitleaks](https://github.com/gitleaks/gitleaks) against staged changes and blocks if a secret-shaped string is found. Bypass with `git commit --no-verify` only when you have a reason; CI should re-scan on push as a backstop. False positives go in `.gitleaks.toml` per-repo
-- **Shell**: zsh with [starship](https://starship.rs) prompt (Nerd Font required for icons; installed automatically on macOS via Brewfile and on Windows via `pkg/windows-fonts.txt`)
+- **Shell**: zsh with [starship](https://starship.rs) prompt (Nerd Font required for icons; installed automatically on macOS via Brewfile, on Windows via `pkg/windows-fonts.txt`, and on Linux via `pkg/linux-fonts.txt`)
 - **Repository management**: [ghq](https://github.com/x-motemen/ghq) — `ghq get <url>`, `ghq list`, `ghq list -p` (full paths). Default root `~/ghq`; layout `<host>/<owner>/<repo>`.
 - **Ctrl+]**: fzf picker over `ghq list -p` → `cd` to selection ([shell/zsh/.zsh/20-fzf.zsh](shell/zsh/.zsh/20-fzf.zsh)); same binding in PowerShell ([xdg-config/windows/powershell/Microsoft.PowerShell_profile.ps1](xdg-config/windows/powershell/Microsoft.PowerShell_profile.ps1))
 - **`cdb`**: bookmark navigation (`cdb /list`, `cdb /add <name>`, `cdb <name>`)

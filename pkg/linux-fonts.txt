@@ -1,0 +1,17 @@
+# Fonts installed on Linux by etc/install-linux-fonts.
+# Format: <github-owner/repo>:<asset-name-glob>:<font-name-glob>
+#   asset-name-glob — matched against the latest release's asset names
+#   font-name-glob  — matched against .ttf / .otf entries inside the archive
+#
+# Deliberately the same format as pkg/windows-fonts.txt so the two can be kept
+# in sync and a terminal looks the same on both. macOS gets the equivalents from
+# the Brewfile casks instead, which is why there is no font entry there.
+#
+# Unlike the Windows script, `@tag` (repos that publish no releases) is not
+# supported here — install-linux-fonts fails loudly rather than silently
+# skipping, so add such a font only after teaching the script the tags API.
+#
+# Nerd-patched Hack merged with GenJyuu Gothic: one file covers both the
+# starship / devicon glyphs and Japanese text, so it is the only entry a usable
+# terminal needs. Debian ships no Nerd-patched font in apt, hence GitHub.
+yuru7/HackGen:HackGen_NF_v*.zip:HackGenConsoleNF-*.ttf

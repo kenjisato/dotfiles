@@ -63,11 +63,13 @@ dotfiles/
 │   ├── cargo-tools.txt           # Rust tools installed via `cargo install`
 │   ├── winget-packages.txt       # Windows; installed on every host
 │   ├── winget-packages.metal.txt # Windows; bare-metal only (skipped on Parallels)
-│   └── windows-fonts.txt         # Windows; GitHub-released fonts (per-user HKCU install)
+│   ├── windows-fonts.txt         # Windows; GitHub-released fonts (per-user HKCU install)
+│   └── linux-fonts.txt           # Linux; GitHub-released fonts (per-user ~/.local/share/fonts)
 └── etc/
-    ├── install                   # bash: brew bundle, zsh shell, Rust, uv, cargo tools, Claude Code
+    ├── install                   # bash: brew bundle, zsh shell, Rust, uv, cargo tools, Claude Code, Linux fonts
     ├── install.ps1               # winget + Claude Code + install-windows-fonts.ps1 + wt-apply-settings.ps1
     ├── install-windows-fonts.ps1 # reads pkg/windows-fonts.txt, installs TTFs to per-user HKCU
+    ├── install-linux-fonts       # reads pkg/linux-fonts.txt, installs TTFs to ~/.local/share/fonts
     ├── wt-apply-settings.ps1     # deep-merges overlay.json into Windows Terminal settings.json
     ├── deploy                    # bash: create symlinks (per-OS dispatch)
     ├── deploy.ps1                # PowerShell: create symlinks
@@ -159,6 +161,22 @@ The hook picks its subcommand at runtime: gitleaks 8.19 superseded `protect` wit
 ## Display scripts that call git
 
 Anything that shells out to `git` on a **timer** for display purposes (tmux `pane-border-format` / status bar, prompts, editor gutters) must pass `--no-optional-locks`. `git status` looks read-only but refreshes the index stat cache, taking `.git/index.lock` to do it — so a periodic caller makes interactive `git add`/`git commit` in that repo fail intermittently with `Unable to create '.git/index.lock': File exists`. The flag suppresses that write; output is unchanged. Currently applies to `bin/common/tmux-pane-border`, re-evaluated every `status-interval` (15s) per bordered pane. Read-only plumbing (`rev-parse`, `symbolic-ref`) doesn't take the lock, but adding the flag by default costs nothing.
+
+## Fonts
+
+Three platforms, three mechanisms, one intent — a Nerd-patched font with Japanese coverage so the starship prompt and Japanese text both render:
+
+| OS | How |
+|---|---|
+| macOS | `pkg/Brewfile` casks (`font-hack-nerd-font`, `font-hackgen-nerd`, …), kept on the server profile too since headless Quarto/Typst/LaTeX rendering needs them |
+| Windows | `etc/install-windows-fonts.ps1` reads `pkg/windows-fonts.txt`, installs per-user to HKCU |
+| Linux | `etc/install-linux-fonts` reads `pkg/linux-fonts.txt`, installs per-user to `~/.local/share/fonts` |
+
+Debian/Ubuntu ship **no** Nerd-patched font in apt, which is why Linux needs the GitHub-release path rather than a package name. `pkg/linux-fonts.txt` uses the same `owner/repo:asset-glob:font-glob` format as the Windows manifest so the two stay comparable — except that the Windows-only `@tag` form (repos publishing no releases) is unimplemented on Linux and warns rather than silently skipping.
+
+Idempotency is per-repo: `~/.local/share/fonts/<repo>/.release` records the installed release tag, and a run whose latest tag matches is a no-op. Delete the stamp to force a re-download. `etc/install` calls the script on Linux only, non-fatal like the package loops.
+
+Installing the font is not the same as *using* it — a terminal emulator with an explicit font setting (lxterminal's `fontname`, Windows Terminal's profile) still has to name it, though fontconfig will fall back to it for glyphs the configured font lacks.
 
 ## Cross-Platform Notes
 

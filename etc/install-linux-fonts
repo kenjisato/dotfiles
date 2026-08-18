@@ -1,0 +1,178 @@
+#!/usr/bin/env bash
+#
+# Install the fonts declared in pkg/linux-fonts.txt (Linux counterpart of
+# etc/install-windows-fonts.ps1). Debian/Ubuntu ship no Nerd-patched font in
+# apt, so they come from GitHub releases.
+#
+# Per-user, no root: files land in ~/.local/share/fonts/<repo>/ and fontconfig
+# picks them up once fc-cache has run.
+#
+# Idempotent: each font directory keeps a .release stamp naming the release tag
+# it came from, and a repo whose latest tag already matches is skipped. Delete
+# the stamp (or the directory) to force a re-download.
+#
+# Usage:
+#   bash etc/install-linux-fonts                  # apply
+#   bash etc/install-linux-fonts --dry-run        # preview
+#   bash etc/install-linux-fonts --manifest PATH  # custom manifest
+
+set -e
+
+DRY_RUN=0
+MANIFEST=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -n|--dry-run)  DRY_RUN=1; shift ;;
+    --manifest)    MANIFEST="$2"; shift 2 ;;
+    --manifest=*)  MANIFEST="${1#*=}"; shift ;;
+    -h|--help)     sed -n '3,18p' "$0" | sed 's/^# \?//'; exit 0 ;;
+    *) echo "Unknown option: $1" >&2; exit 2 ;;
+  esac
+done
+
+DOTFILES="$(cd "$(dirname "$0")/.." && pwd)"
+[ -n "$MANIFEST" ] || MANIFEST="$DOTFILES/pkg/linux-fonts.txt"
+
+if [ ! -f "$MANIFEST" ]; then
+  echo "no font manifest at $MANIFEST — skipping"
+  exit 0
+fi
+
+# Missing tools are a skip, not a failure: fonts are cosmetic and this script is
+# called from etc/install, which must keep going.
+for cmd in curl unzip; do
+  if ! command -v "$cmd" > /dev/null 2>&1; then
+    echo "$cmd is required for font installation but is not present — skipping." >&2
+    exit 0
+  fi
+done
+
+FONT_ROOT="$HOME/.local/share/fonts"
+TMP=""
+cleanup() { [ -n "$TMP" ] && rm -rf "$TMP"; }
+trap cleanup EXIT
+TMP="$(mktemp -d)"
+
+installed=0
+
+while IFS= read -r line || [ -n "$line" ]; do
+  # Skip blanks and comments.
+  case "$line" in ''|'#'*) continue ;; esac
+
+  repo="${line%%:*}"
+  rest="${line#*:}"
+  asset_glob="${rest%%:*}"
+  font_glob="${rest#*:}"
+
+  if [ -z "$repo" ] || [ -z "$asset_glob" ] || [ -z "$font_glob" ] || [ "$rest" = "$line" ]; then
+    echo "warning: malformed manifest line, expected owner/repo:asset:font — '$line'" >&2
+    continue
+  fi
+  if [ "$asset_glob" = "@tag" ]; then
+    echo "warning: '$repo' uses @tag, which this script does not implement — skipping." >&2
+    continue
+  fi
+
+  name="${repo##*/}"
+  dest="$FONT_ROOT/$name"
+  stamp="$dest/.release"
+
+  # One API call gives both the tag (for the idempotency stamp) and the asset
+  # URLs. Parsed with grep/sed rather than a JSON library so the script needs
+  # nothing beyond curl — python3 is not guaranteed on a minimal box.
+  api="https://api.github.com/repos/$repo/releases/latest"
+  if ! json="$(curl -fsSL "$api")"; then
+    echo "warning: could not query $api (rate limit or network?) — skipping $repo." >&2
+    continue
+  fi
+
+  tag="$(printf '%s' "$json" \
+    | grep -o '"tag_name"[[:space:]]*:[[:space:]]*"[^"]*"' \
+    | head -1 | sed 's/.*"\([^"]*\)"$/\1/')"
+
+  if [ -z "$tag" ]; then
+    echo "warning: no release tag found for $repo — skipping." >&2
+    continue
+  fi
+
+  if [ -f "$stamp" ] && [ "$(cat "$stamp")" = "$tag" ]; then
+    echo "$repo: $tag already installed."
+    continue
+  fi
+
+  # Pick the first release asset whose filename matches the glob. The variable
+  # is unquoted in the case pattern on purpose — that is what makes it a glob.
+  url=""
+  while IFS= read -r candidate; do
+    [ -n "$candidate" ] || continue
+    case "${candidate##*/}" in
+      $asset_glob) url="$candidate"; break ;;
+    esac
+  done <<EOF
+$(printf '%s' "$json" \
+  | grep -o '"browser_download_url"[[:space:]]*:[[:space:]]*"[^"]*"' \
+  | sed 's/.*"\(https[^"]*\)"$/\1/')
+EOF
+
+  if [ -z "$url" ]; then
+    echo "warning: no asset matching '$asset_glob' in $repo $tag — skipping." >&2
+    continue
+  fi
+
+  if [ $DRY_RUN -eq 1 ]; then
+    echo "would install: $repo $tag -> $dest"
+    echo "  asset: ${url##*/}"
+    echo "  fonts: $font_glob"
+    continue
+  fi
+
+  echo "Installing fonts from $repo $tag ..."
+  archive="$TMP/${url##*/}"
+  if ! curl -fsSL -o "$archive" "$url"; then
+    echo "warning: download failed for $url — skipping $repo." >&2
+    continue
+  fi
+
+  # Extract everything, then copy only what the font glob matches. Passing the
+  # glob to unzip directly would make it exit non-zero when the pattern matches
+  # nothing, and would not descend into the archive's subdirectories.
+  extract="$TMP/x-$name"
+  rm -rf "$extract"; mkdir -p "$extract"
+  if ! unzip -qo "$archive" -d "$extract"; then
+    echo "warning: could not unpack ${url##*/} — skipping $repo." >&2
+    continue
+  fi
+
+  mkdir -p "$dest"
+  copied=0
+  while IFS= read -r font; do
+    cp -f "$font" "$dest/"
+    copied=$((copied + 1))
+  done < <(find "$extract" -type f -name "$font_glob")
+
+  if [ "$copied" -eq 0 ]; then
+    echo "warning: no file matching '$font_glob' inside ${url##*/} — nothing installed for $repo." >&2
+    continue
+  fi
+
+  printf '%s\n' "$tag" > "$stamp"
+  echo "  $copied font file(s) -> $dest"
+  installed=$((installed + copied))
+done < "$MANIFEST"
+
+if [ $DRY_RUN -eq 1 ]; then
+  echo "(dry run — nothing written)"
+  exit 0
+fi
+
+if [ "$installed" -gt 0 ]; then
+  if command -v fc-cache > /dev/null 2>&1; then
+    echo "Rebuilding the font cache ..."
+    fc-cache -f "$FONT_ROOT" > /dev/null
+  else
+    echo "note: fc-cache not found; log out and back in for the fonts to appear." >&2
+  fi
+  echo "Installed $installed font file(s)."
+else
+  echo "Fonts already up to date."
+fi
