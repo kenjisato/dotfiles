@@ -144,6 +144,42 @@ deploy_tree() {
   link_children  "$root/bin/$OS"            "$HOME/bin"
 }
 
+# Guard the ~/.gitconfig invariant before linking anything.
+#
+# `git config --global` writes to ~/.gitconfig when that file exists, and
+# otherwise falls back to $XDG_CONFIG_HOME/git/config — which the next step
+# symlinks into this repo. Git follows the symlink and rewrites the *target*, so
+# on a box without ~/.gitconfig a plain `git config --global user.email ...`
+# silently lands a personal address in a tracked file of a public repo.
+#
+# Creating the file removes the fallback for good: ~/.gitconfig is then both the
+# write target and, being read after ~/.config/git/config, the winner for
+# single-valued keys. Only ever created, never modified.
+ensure_gitconfig() {
+  local gc="$HOME/.gitconfig"
+  # Spelled out rather than `[ -e ] || [ -L ] && return` — that parses as
+  # (A||B)&&C and interacts badly with set -e when the file is absent.
+  if [ -e "$gc" ] || [ -L "$gc" ]; then
+    return 0
+  fi
+  if [ $DRY_RUN -eq 1 ]; then
+    echo "would create: $gc (keeps 'git config --global' out of this repo)"
+    return 0
+  fi
+  cat > "$gc" <<'EOF'
+# Machine-local git config. Untracked on purpose: this is where identity and
+# anything else host-specific belongs, and it is what `git config --global`
+# edits. Shared, non-personal settings come from ~/.config/git/config, which
+# etc/deploy symlinks into the dotfiles repo.
+#
+# Git reads ~/.config/git/config first and this file second, so a single-valued
+# key set here wins. Created by etc/deploy so that `git config --global` can
+# never fall back to writing into the (public) repo.
+EOF
+  echo "created: $gc (keeps 'git config --global' out of this repo)"
+}
+ensure_gitconfig
+
 echo "--- public ---"
 deploy_tree "$DOTFILES"
 

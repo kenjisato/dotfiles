@@ -84,6 +84,19 @@ if ! command -v brew > /dev/null 2>&1; then
   done
 fi
 
+# Make ~/.local/bin callable for the rest of THIS script. uv and the Claude Code
+# native installer both land there, and the steps below invoke what they just
+# installed. It is on PATH in a deployed shell, but this installer runs before
+# etc/deploy and usually under bash, so that does not help here: without this,
+# `uv tool install` dies with "uv: command not found" and set -e aborts the
+# whole installer before the git and gh steps at the bottom ever run. It also
+# keeps the `command -v uv` / `command -v claude` guards honest on a re-run.
+case ":$PATH:" in
+  *":$HOME/.local/bin:"*) ;;
+  *) PATH="$HOME/.local/bin:$PATH" ;;
+esac
+export PATH
+
 # Install packages from Brewfile
 DOTFILES="$(cd "$(dirname "$0")/.." && pwd)"
 echo "Installing packages from Brewfile..."
@@ -150,17 +163,22 @@ if command -v uv > /dev/null 2>&1; then
   echo "uv is already installed."
 else
   echo "Installing uv..."
-  # INSTALLER_NO_MODIFY_PATH: rc files are repo symlinks and ~/.local/bin is
-  # already on PATH (shell/zsh/.zshenv), so skip the installer's PATH edits.
+  # INSTALLER_NO_MODIFY_PATH: the rc files are symlinks into this repo and
+  # already put ~/.local/bin on PATH, so the installer must not edit them. This
+  # script adds that directory to its own PATH above, which is a separate thing.
   curl -LsSf https://astral.sh/uv/install.sh | INSTALLER_NO_MODIFY_PATH=1 sh
 fi
 
-# Install Python dev tools via uv
+# Install Python dev tools via uv.
+#
+# A failing package must not abort the installer: the git and gh configuration
+# at the bottom is what makes a fresh box usable, and it is worth more than any
+# single dev tool. Warn and keep going instead.
 if [ -f "$DOTFILES/pkg/uv-tools.txt" ]; then
   echo "Installing Python dev tools..."
   while IFS= read -r pkg; do
     [ -z "$pkg" ] || [[ "$pkg" == \#* ]] && continue
-    uv tool install "$pkg"
+    uv tool install "$pkg" || echo "warning: uv tool install '$pkg' failed — continuing." >&2
   done < "$DOTFILES/pkg/uv-tools.txt"
 fi
 
@@ -171,7 +189,8 @@ if [ -f "$DOTFILES/pkg/cargo-tools.txt" ]; then
   [ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
   while IFS= read -r pkg; do
     [ -z "$pkg" ] || [[ "$pkg" == \#* ]] && continue
-    cargo install "$pkg"
+    # Non-fatal for the same reason as the uv loop above.
+    cargo install "$pkg" || echo "warning: cargo install '$pkg' failed — continuing." >&2
   done < "$DOTFILES/pkg/cargo-tools.txt"
 fi
 

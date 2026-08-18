@@ -26,6 +26,11 @@ authenticated, so HTTPS `git push` doesn't prompt for a password, and seeds
 
 `etc/deploy` is idempotent. It refuses to run if `~/.config` is itself a symlink (the legacy whole-directory layout) and prints migration instructions.
 
+**`etc/install` must stay runnable end-to-end with nothing but this repo.** Two rules follow from that, both learned the hard way:
+
+- It puts `~/.local/bin` on **its own** `PATH` early. `uv` and the Claude Code installer land there, and later steps invoke what they just installed. Being on `PATH` in a *deployed shell* is irrelevant — the installer runs before `etc/deploy`, usually under bash. Without it `uv tool install` failed with `uv: command not found` and `set -e` killed the installer before any of the git/gh configuration at the bottom ran.
+- The `uv`/`cargo` package loops are **non-fatal** (`|| echo warning`). The configuration steps at the end are what make a fresh box usable; no single optional dev tool is worth skipping them. Keep new package loops non-fatal and put configuration after them, or move it earlier.
+
 ## Repository Structure
 
 ```
@@ -138,6 +143,8 @@ The split follows from that:
 Identity lives in `~/.gitconfig` deliberately: that is both the file `git config --global` edits and the file that wins, so there is no silent-override trap. `etc/install` seeds it from `gh api user` when `user.email` is unset — but note the ordering, since README runs `gh auth login` *after* the installer: on a genuinely first run gh is installed and unauthenticated, the seeding is skipped, and the installer's closing message tells you to re-run it or set the identity by hand. Without this, the first `git commit` on a fresh box fails with "Author identity unknown".
 
 A relative `[include] path` resolves against the directory of the *symlink* (`~/.config/git/`), not the symlink's target inside the repo, so `config.local` can never accidentally resolve to a tracked file. A missing include is silently ignored.
+
+**`etc/deploy` creates `~/.gitconfig` if absent, before it links anything** — do not remove that step. Since `git config --global` falls back to `~/.config/git/config` when `~/.gitconfig` does not exist, and git *follows the symlink and rewrites the target*, a plain `git config --global user.email …` on a box without `~/.gitconfig` writes a personal address straight into a tracked file of this public repo. Verified, not theoretical. Creating the file removes the fallback permanently and makes the "identity lives in `~/.gitconfig`" rule self-enforcing. An existing file is never modified.
 
 `commit.template` must **not** go in the tracked config: if the template file is absent, `git commit` without `-m` aborts with `fatal: could not read '<path>'` (exit 128). Put it in `config.local`.
 
