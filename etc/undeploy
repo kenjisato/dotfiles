@@ -4,7 +4,7 @@
 # repo (and into the overlay directory, if $DOTFILES_PRIVATE is set).
 #
 # Scans $HOME (top-level), $HOME/.config (recursive), and $HOME/bin
-# (top-level) for symlinks whose target resolves into either repo.
+# (top-level) for symlinks whose target resolves into a managed directory.
 # Regular files are never touched.
 #
 # Usage:
@@ -59,7 +59,7 @@ points_to_repo() {
 
 COUNT=0
 
-# Remove a symlink if it points into either repo.
+# Remove a symlink if it points into a managed directory.
 maybe_remove() {
   local link="$1"
   [ -L "$link" ] || return 0

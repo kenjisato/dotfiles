@@ -1,13 +1,14 @@
 # CLAUDE.md — dotfiles
 
-Personal dotfiles for macOS, Linux, and WSL2 (Windows support is partial — PowerShell only). `etc/deploy` detects the host OS and creates **per-target symlinks**, linking only the relevant subset of files. `etc/install` provisions the tools those files assume.
+Dotfiles for macOS, Linux, and WSL2 (Windows support is partial — PowerShell only).
 
-Two goals shape almost every decision here:
+**The goal is the shortest path from a freshly installed OS to a machine that is ready to work on.** `etc/install` provisions the tools; `etc/deploy` symlinks the config, per OS and per target. When a design question comes up, the tie-breaker is which option gets a new machine working sooner and with fewer surprises.
 
-1. **This repo stands alone.** `bash etc/install && bash etc/deploy` on a fresh machine must leave a system you can work on, with no other repository, no external document, and no manual step beyond what the installer prints. A comment or doc line that points at a file outside this tree is a defect, not a cross-reference.
-2. **Nothing personal is tracked.** Every file here is published. Identity, secrets, and host-specific values belong in untracked files that the deployed config reaches through a documented extension slot.
+Three consequences do most of the work:
 
-Overlays are *supported but never assumed*. `$DOTFILES_PRIVATE` is an optional extension point; the contract for it is in README under "Extending with an overlay". Describe the mechanism only — no repository name, owner, URL, or local path for any particular overlay belongs anywhere in this tree.
+1. **Every instruction must be followable with only this repo and the machine in front of you.** A comment, doc line, or help string that sends the reader somewhere they might not have is where setup stops.
+2. **The same tracked files have to work on every machine.** Nothing host-specific gets baked in, and secrets and identity never enter version control at all. Both go in the machine-local slots the deployed config already reaches.
+3. **Defining how to extend and override these settings is part of the job.** Overriding is a supported operation, not an afterthought, so this repo owns the rules for doing it without collisions: which slots exist, what `$DOTFILES_PRIVATE` links and in what order, and why reusing one of our tracked filenames is the wrong way to do it. Documented in README under "Extending and overriding". Describe the mechanism, never a particular extension.
 
 ## Setup
 
@@ -16,7 +17,7 @@ bash etc/install                   # brew bundle, zsh login shell, Rust, uv/carg
 bash etc/install --profile server  # headless box: skip GUI casks (the profile is remembered per machine)
 bash etc/deploy                    # detect OS, create symlinks (idempotent)
 bash etc/deploy --dry-run          # preview
-bash etc/undeploy                  # remove only symlinks pointing into either repo
+bash etc/undeploy                  # remove only symlinks pointing into this repo
 ```
 
 Windows: `pwsh -File etc\install.ps1`, then `pwsh -File etc\deploy.ps1`.
@@ -35,8 +36,8 @@ pkg/         package + font manifests   etc/     install / deploy / undeploy
 
 Every item below has actually been violated in this repo and cost real debugging. The reasoning behind each one is in `.claude/rules/`, which loads when you open the relevant files.
 
-- **Never put identity or secrets in a tracked file.** Everything here is published. `user.name`/`user.email` go in `~/.gitconfig`, never in `xdg-config/common/git/config`.
-- **Never name a specific overlay, or point at anything outside this tree.** No repository name, owner, URL, or local path — not in docs, not in a code comment, not in a help string. Document the `$DOTFILES_PRIVATE` contract and the `*.local` slots instead. A reference to a file only one person has is a broken reference for everyone else.
+- **Never put identity or secrets in a tracked file.** `user.name`/`user.email` go in `~/.gitconfig`, never in `xdg-config/common/git/config`.
+- **Never reference anything the reader might not have.** No repository name, owner, URL, or personal path — in docs, code comments, or help strings alike. Write the instruction out instead of pointing at a document only some people can open, and describe an extension slot rather than whatever happens to fill it here.
 - **Never remove the `~/.gitconfig` creation step from `etc/deploy`.** Without it `git config --global` follows a symlink and writes a personal address into this repo's tracked git config.
 - **Never put `commit.template` in the tracked git config.** If the template file is missing, `git commit` without `-m` aborts with exit 128 on every machine that lacks it.
 - **Never put environment setup in `.bash_profile` alone.** Desktop terminal emulators spawn *non-login* shells that read only `.bashrc`. It belongs in `shell/bash/.bash/env.sh`, which both source.

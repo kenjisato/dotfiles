@@ -119,47 +119,47 @@ file that wins is also the file `git config --global` edits. Per-machine
 overrides that are not identity can go in `~/.config/git/config.local`, which the
 deployed config includes automatically when present.
 
-## Extending with an overlay
+## Extending and overriding
 
-This repo is self-sufficient: `etc/install` and `etc/deploy` are all you need,
-and nothing here assumes a second repository exists. Anything personal —
-identity, credentials, machine-specific paths, private package lists — is
-deliberately absent, so if you want to carry such files across your own
-machines, keep them in a separate directory of your own and layer it on top.
-
-Set `$DOTFILES_PRIVATE` to that directory. `etc/deploy` runs the same linking
-against it *after* this repo, so an overlay file wins wherever it shares a
-destination path:
-
-```bash
-DOTFILES_PRIVATE=/path/to/your/overlay bash etc/deploy
-```
-
-`$DOTFILES` overrides the location of *this* repo if it isn't at `~/dotfiles`
-(`$HOME\dotfiles` on Windows). `etc/undeploy` removes symlinks pointing into
-either directory.
-
-### The contract an overlay must honour
-
-| Requirement | Why |
-|---|---|
-| Mirror this layout — `home/`, `shell/`, `xdg-config/`, `bin/`, each with `common/` and per-OS subdirectories | `etc/deploy` runs the identical tree walk against the overlay; anything outside those paths is ignored |
-| Prefer your own filenames over reusing one of ours | Same destination path means your file **replaces** ours, so later improvements here never reach your machines. The `*.local` slots below exist for this |
-| Read `~/.config/dotfiles/host-profile` if you need the host profile | That marker is the documented interface, so `--profile server` set here also applies to your installer |
-| Keep the overlay's own bootstrap instructions in the overlay | They depend on where you keep it, which is none of this repo's business |
-
-Extension points this repo deliberately leaves open:
+These settings are built to be extended. Anything host- or person-specific is
+left out on purpose, and the deployed config already looks for it in fixed,
+untracked locations. Fill in whichever you need; nothing else has to change:
 
 | Slot | Purpose |
 |---|---|
-| `~/.config/git/config.local` | git settings; included automatically by the deployed `git/config` when present |
+| `~/.gitconfig` | git identity and credential helpers |
+| `~/.config/git/config.local` | any other git settings; `[include]`d by the deployed `git/config` |
 | `~/.shell.local/*.sh` | zsh + bash snippets, sourced at the end of both rc files |
 | `~/.config/cdmarks.local.tsv` | extra `cdb` bookmarks, merged with the tracked ones |
-| `profile.local.ps1` next to `$PROFILE` | PowerShell overlay, dot-sourced by the tracked profile |
-| `~/.gitconfig` | identity and credential helpers; never tracked here |
+| `profile.local.ps1` next to `$PROFILE` | PowerShell additions, dot-sourced by the deployed profile |
 
-A missing slot is always a silent no-op, so leaving every one of them empty is a
-supported configuration.
+A missing slot is a silent no-op, so leaving all of them empty is a supported
+configuration — and putting installer-managed junk in `~/.shell.local/` keeps it
+out of the tracked rc files, which are symlinks into this repo.
+
+### Deploying a set of them together
+
+If you keep those files in one directory — to carry them across your own
+machines, for instance — point `$DOTFILES_PRIVATE` at it and `etc/deploy` will
+link them alongside these:
+
+```bash
+DOTFILES_PRIVATE=/path/to/your/extras bash etc/deploy
+```
+
+The same tree walk runs against that directory *after* this one, so its files
+win wherever they share a destination path. `$DOTFILES` overrides the location of
+this repo if it isn't at `~/dotfiles` (`$HOME\dotfiles` on Windows), and
+`etc/undeploy` removes symlinks pointing into either directory.
+
+### Rules for an extension that won't collide
+
+| Rule | Why |
+|---|---|
+| Mirror this layout — `home/`, `shell/`, `xdg-config/`, `bin/`, each with `common/` and per-OS subdirectories | `etc/deploy` runs an identical tree walk against your directory; anything outside those paths is ignored |
+| Use the slots above rather than a filename this repo already tracks | A shared destination path means your file **replaces** ours, so later fixes here silently stop reaching that machine |
+| Read `~/.config/dotfiles/host-profile` if you need the host profile | That marker is the interface, so a `--profile server` set here applies to your installer too |
+| Keep your own setup instructions with your own files | They depend on where you keep them, which this repo cannot know |
 
 ## Previewing and undoing
 
@@ -167,7 +167,7 @@ supported configuration.
 PowerShell variant) to preview symlinks without applying them.
 
 `etc/undeploy` (and `etc/undeploy.ps1`) walks `$HOME` and removes only
-symlinks whose target resolves into either repo — regular files are
+symlinks whose target resolves into a managed directory — regular files are
 never touched. Useful when retiring a host or when an old target was
 removed from `etc/deploy` and left an orphan symlink behind.
 

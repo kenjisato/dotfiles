@@ -1,8 +1,8 @@
 # Linked to ~/.config/git/config by etc/deploy.
 #
-# THIS FILE IS TRACKED AND PUBLISHED. Never put user.name, user.email, tokens, or
-# any other identifying value here — see the [include] note at the bottom for
-# where machine-local settings go.
+# TRACKED AND SHARED BY EVERY MACHINE. Never put user.name, user.email, tokens,
+# or any other identifying or host-specific value here — see the [include] note
+# at the bottom for where machine-local settings go.
 #
 # How git resolves the two "global" config files (verified on git 2.47):
 #   - Both ~/.config/git/config (this file) and ~/.gitconfig are read, in that

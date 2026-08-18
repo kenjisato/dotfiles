@@ -14,8 +14,8 @@
 # Overlay (optional): if $DOTFILES_PRIVATE names a directory that mirrors the
 # layout above, the same linking runs against it after this repo, so an overlay
 # file wins wherever it shares a destination path. Nothing here requires an
-# overlay to exist; see "Extending with an overlay" in README.md for the
-# contract an overlay is expected to honour.
+# extension to exist; README's "Extending and overriding" has the slots and the
+# rules for adding a set of files without colliding with these.
 
 set -e
 

@@ -7,7 +7,7 @@ paths:
 
 # etc/install and etc/deploy
 
-## etc/install must stay runnable with nothing but this repo
+## etc/install has to take a fresh machine all the way to usable
 
 Two rules follow, both learned the hard way:
 
@@ -47,7 +47,7 @@ README runs `gh auth login` *after* the installer, so on a genuinely first run g
 - It refuses to run if `~/.config` is itself a symlink (the legacy whole-directory layout) and prints migration instructions.
 - With `$DOTFILES_PRIVATE` set, the same `deploy_tree` function runs against that directory *after* this repo, so an overlay file at the same destination path **replaces** ours rather than merging with it — which also means later improvements here never reach that machine. Document the `*.local` extension slots instead of inviting overlays to shadow tracked files. Nothing in this repo may name, assume, or depend on a particular overlay.
 
-`etc/undeploy` walks `$HOME` and removes only symlinks whose target resolves into either repo; regular files are never touched.
+`etc/undeploy` walks `$HOME` and removes only symlinks whose target resolves into this repo (or the `$DOTFILES_PRIVATE` directory, when set); regular files are never touched.
 
 ## Windows
 
