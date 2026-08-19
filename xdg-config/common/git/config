@@ -19,10 +19,10 @@
 [core]
     excludesfile = ~/.config/git/ignore
     # Global gitleaks pre-commit scan. The hook itself is symlinked to
-    # ~/.config/git/hooks/pre-commit by etc/deploy. Setting it here rather than
-    # via `git config --global` keeps ~/.gitconfig free of repo-managed values.
-    # Windows is the exception: etc/deploy.ps1 links only the hook, not this
-    # file, so etc/install.ps1 still sets core.hooksPath globally there.
+    # ~/.config/git/hooks/pre-commit by etc/deploy (and by etc/deploy.ps1, which
+    # links this file too). Setting it here rather than via `git config --global`
+    # keeps ~/.gitconfig free of repo-managed values. etc/install.ps1 still sets
+    # it globally on Windows, but only when this file is not linked yet.
     hooksPath = ~/.config/git/hooks
     autocrlf = input
     filemode = false

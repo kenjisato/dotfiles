@@ -63,4 +63,8 @@ A destination can be a *directory* (`link_children` links `.shell.local` whole),
 
 ## Windows
 
-The Windows deploy is intentionally narrow: the PowerShell profile plus cross-platform dotfiles that have a Windows runtime (`.vimrc`, `.vim/`). `.tmux.conf` is excluded (no native tmux; WSL has its own filesystem), and apps without a clean Windows XDG story (gh, git, rstudio) are skipped. Because `etc/deploy.ps1` links only the git *hook* and not the git config file, `etc/install.ps1` still sets `core.hooksPath` via `git config --global` — the one place that duplication is correct.
+The Windows deploy is intentionally narrow: the PowerShell profile, cross-platform dotfiles that have a Windows runtime (`.vimrc`, `.vim/`), `.psmux.conf`, and the three git files under `~/.config/git/` (`config`, `ignore`, `hooks/pre-commit`). `.tmux.conf` is excluded (no native tmux; WSL has its own filesystem), and apps without a clean Windows XDG story (gh, rstudio) are skipped.
+
+git is linked because git-for-windows resolves `~/.config/git/config` like every other platform, so the whole tracked config applies — including `core.autocrlf = input`, which overrides Git for Windows' system-level `autocrlf true`. See `git-config.md` for what that costs and the per-machine escape hatch.
+
+Two invariants come with that link. `etc/deploy.ps1` must create `~/.gitconfig` before linking anything (`Initialize-GitConfig`), for the same reason the bash deploy does. And `etc/install.ps1` sets `core.hooksPath` via `git config --global` **only when `~/.config/git/config` does not exist** — with the link in place and `~/.gitconfig` absent, that write would land in this repo's tracked file. The guard means the installer never depends on the deploy having run first.

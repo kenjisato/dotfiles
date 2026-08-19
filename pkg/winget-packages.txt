@@ -4,6 +4,18 @@ Git.Git
 GitHub.cli
 GitHub.GitHubDesktop
 Gitleaks.Gitleaks
+# git diff toolchain. delta and difftastic are wired by the git config
+# etc/deploy.ps1 links (delta as the pager; difftastic behind the dft/dlog/dshow
+# aliases). lazygit is installed but unconfigured here: it reads
+# %LOCALAPPDATA%\lazygit on Windows, which nothing links, so it renders diffs
+# with its own default instead of the tracked config.yml.
+# All three install as portable packages, so the commands delta, difft and
+# lazygit land on PATH. delta and difftastic ship x64 manifests only — on an
+# arm64 Windows guest they run under x64 emulation; lazygit has a native arm64
+# build.
+dandavison.delta
+Wilfred.difftastic
+JesseDuffield.lazygit
 junegunn.fzf
 Microsoft.PowerShell
 Microsoft.VisualStudioCode

@@ -91,9 +91,43 @@ Parallels VMs (detected via WMI Manufacturer = Parallels); override with
   preserved; the original is backed up first)
 
 The Windows deploy is intentionally narrower than the bash side — it links the
-PowerShell profile (to `$PROFILE`), `.vimrc`, and `.vim/`. Apps without a
-clean Windows XDG story (gh, git, rstudio, …) are skipped. `.tmux.conf` is
-also skipped: native Windows has no tmux, and WSL has its own filesystem.
+PowerShell profile (to `$PROFILE`), `.vimrc`, `.vim/`, `.psmux.conf`, and the git
+config, ignore file and pre-commit hook under `~/.config/git/`. Apps without a
+clean Windows XDG story (gh, rstudio, …) are skipped, and so is `.tmux.conf`:
+native Windows has no tmux, and WSL has its own filesystem.
+
+git is deliberately not on that skipped list: git-for-windows reads
+`~/.config/git/config` like every other platform, so delta, the difftastic
+aliases and the gitleaks `hooksPath` behave the same there. Before linking
+anything, `etc/deploy.ps1` creates `~/.gitconfig` when it is missing — without
+it, `git config --global …` falls back to `~/.config/git/config` and, following
+the fresh symlink, would write into this repo's tracked file. Two things follow
+from linking the config: `etc/install.ps1` sets `core.hooksPath` globally only
+when that link is absent (deploy not run yet, or symlink creation refused
+because Developer Mode is off), and `core.autocrlf = input` now applies on
+Windows too.
+
+### Line endings on Windows
+
+`core.autocrlf = input` keeps the commit-side safety net — CRLF in the working
+tree is normalised to LF in the index — but stops the checkout-side conversion
+that Git for Windows' own system config performs. New checkouts therefore land
+as LF, matching every other platform. Anything that genuinely needs CRLF belongs
+in `.gitattributes` (`*.bat text eol=crlf`), which beats `core.autocrlf`
+everywhere; the LF-critical files here, the git hooks and `*.sh`, are already
+pinned that way.
+
+One rough edge: an editor that rewrites a checked-out LF file with CRLF leaves
+it reported as modified by `git status` while `git diff` shows no hunks — the
+normalised content is identical, the file size is not. `git add` clears it.
+RStudio on Windows does exactly this (its `line_ending_conversion` default is
+`native`), so set Global Options → Code → Saving → Line ending conversion to
+**Passthrough** or **Posix (LF)**. VS Code, Neovim, Notepad++ and current
+Notepad all preserve a file's existing endings and need nothing.
+
+If a machine really wants Windows-style checkouts, put it in `~/.gitconfig`
+(`git config --global core.autocrlf true`) — that file is read last, so it wins
+over the deployed config.
 
 ## git identity
 
@@ -272,7 +306,10 @@ identity lines into `~/.gitconfig`, anything else machine-specific into
     committing and rebasing, and renders diffs through both: `|` cycles delta →
     difftastic → plain git
 
-  macOS, Linux and WSL only — the Windows deploy links no git config.
+  On Windows, delta and difftastic work the same way — all three tools are in
+  `pkg/winget-packages.txt` and the git config is linked — but lazygit reads
+  `%LOCALAPPDATA%\lazygit`, which nothing links, so it falls back to its own
+  built-in renderer there.
 - **Shell**: zsh with [starship](https://starship.rs) prompt (Nerd Font required for icons; installed automatically on macOS via Brewfile, on Windows via `pkg/windows-fonts.txt`, and on Linux via `pkg/linux-fonts.txt`)
 - **Repository management**: [ghq](https://github.com/x-motemen/ghq) — `ghq get <url>`, `ghq list`, `ghq list -p` (full paths). Default root `~/ghq`; layout `<host>/<owner>/<repo>`.
 - **Ctrl+]**: fzf picker over `ghq list -p` → `cd` to selection ([shell/zsh/.zsh/20-fzf.zsh](shell/zsh/.zsh/20-fzf.zsh)); same binding in PowerShell ([xdg-config/windows/powershell/Microsoft.PowerShell_profile.ps1](xdg-config/windows/powershell/Microsoft.PowerShell_profile.ps1))

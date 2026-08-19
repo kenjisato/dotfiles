@@ -154,9 +154,23 @@ if (Get-Command claude -ErrorAction SilentlyContinue) {
 }
 
 # Wire global git hooks at ~/.config/git/hooks (deployed from
-# xdg-config/common/git/hooks/). Idempotent — just sets the value.
+# xdg-config/common/git/hooks/).
+#
+# core.hooksPath also ships in the tracked xdg-config/common/git/config, which
+# etc/deploy.ps1 links to ~/.config/git/config — so this global write is now only
+# a fallback for a box where that link is not there: deploy has not run yet, or
+# symlink creation was refused because Developer Mode is off.
+#
+# Skipping the write when the link exists is not cosmetic. `git config --global`
+# falls back to ~/.config/git/config whenever ~/.gitconfig is absent, and git
+# rewrites the symlink's *target* — so the write would land in this repo's
+# tracked file. The deploy creates ~/.gitconfig to close that hole; this guard
+# means the installer never depends on the deploy having done so.
 Write-Host ""
-if ($DryRun) {
+$deployedGitConfig = Join-Path $HOME '.config\git\config'
+if (Test-Path -LiteralPath $deployedGitConfig) {
+    Write-Host "core.hooksPath comes from the deployed ~/.config/git/config — nothing to set." -ForegroundColor DarkGray
+} elseif ($DryRun) {
     Write-Host "would set git core.hooksPath -> ~/.config/git/hooks"
 } else {
     Write-Host "Setting git core.hooksPath -> ~/.config/git/hooks ..." -ForegroundColor Cyan

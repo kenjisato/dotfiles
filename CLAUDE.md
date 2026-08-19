@@ -44,7 +44,7 @@ Every item below has either been violated in this repo and cost real debugging, 
 
 - **Never put identity or secrets in a tracked file.** `user.name`/`user.email` go in `~/.gitconfig`, never in `xdg-config/common/git/config`.
 - **Never reference anything the reader might not have.** No repository name, owner, URL, or personal path — in docs, code comments, or help strings alike. Write the instruction out instead of pointing at a document only some people can open, and describe an extension slot rather than whatever happens to fill it here.
-- **Never remove the `~/.gitconfig` creation step from `etc/deploy`.** Without it `git config --global` follows a symlink and writes a personal address into this repo's tracked git config.
+- **Never remove the `~/.gitconfig` creation step from `etc/deploy` or `etc/deploy.ps1`.** Without it `git config --global` follows a symlink and writes a personal address into this repo's tracked git config. For the same reason, `etc/install.ps1` writes `core.hooksPath` globally only while `~/.config/git/config` is unlinked.
 - **Never put `merge.conflictstyle = zdiff3` in the tracked git config.** git before 2.35 rejects the value *while merging*: exit 128 and no conflict markers written. `diff3` is understood everywhere; zdiff3 goes in `~/.config/git/config.local`.
 - **Never set `diff.external` globally.** It swaps the diff *engine* for every caller, so `git add -p` and `git diff > x.patch` stop producing a patch. difftastic stays behind the `git dft` / `dlog` / `dshow` aliases.
 - **Never let the tracked lazygit config fall behind lazygit's schema.** A renamed key makes lazygit migrate the file and save it back — through the symlink, into this repo.

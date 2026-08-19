@@ -1,10 +1,10 @@
 # etc/undeploy.ps1 — Windows / PowerShell counterpart to etc/undeploy (bash).
 #
-# Removes symlinks at $PROFILE and under $HOME (top-level) whose target
-# resolves into one of the trees it is given (this repo by default; add more
-# with -Also). Regular files are never touched, and symlinks
-# pointing anywhere else (e.g. user-created links into other repos) are
-# left alone.
+# Removes symlinks at $PROFILE, under $HOME (top-level) and under
+# $HOME\.config (recursive) whose target resolves into one of the trees it is
+# given (this repo by default; add more with -Also). Regular files are never
+# touched, and symlinks pointing anywhere else (e.g. user-created links into
+# other repos) are left alone.
 #
 # This complements etc/deploy.ps1 — it inspects exactly the same targets
 # the deploy creates, plus any orphans left behind when previous deploys
@@ -92,6 +92,22 @@ if ($PROFILE) { Remove-DotfileLink $PROFILE }
 # --- $HOME top-level (.vimrc, .vim/, plus orphans like .tmux.conf) ---
 Get-ChildItem -Path $HOME -Force | ForEach-Object {
     Remove-DotfileLink $_.FullName
+}
+
+# --- $HOME\.config (recursive — mirrors the deploy's per-file git links) ---
+#
+# The top-level walk above cannot reach these: ~/.config is a real directory, so
+# nothing in it is visible as a link from $HOME. Materialise the list before
+# removing anything — the enumeration would otherwise run while its own entries
+# are being deleted. -Recurse does not descend into reparse points, so a linked
+# directory is removed as the link it is.
+$configRoot = Join-Path $HOME '.config'
+if (Test-Path -LiteralPath $configRoot) {
+    $configLinks = @(
+        Get-ChildItem -Path $configRoot -Force -Recurse -ErrorAction SilentlyContinue |
+            Where-Object { $_.Attributes -band [IO.FileAttributes]::ReparsePoint }
+    )
+    foreach ($link in $configLinks) { Remove-DotfileLink $link.FullName }
 }
 
 Write-Host ""
