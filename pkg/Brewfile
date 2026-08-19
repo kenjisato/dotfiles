@@ -1,9 +1,15 @@
 brew "bat"
+# Structural (syntax-aware) diff, command name `difft`. Opt-in per command
+# through the aliases in xdg-config/common/git/config.
+brew "difftastic"
 brew "fzf"
 brew "gh"
 brew "ghq"
+# Diff pager, command name `delta` — core.pager in the tracked git config.
+brew "git-delta"
 brew "gitleaks"
 brew "kubernetes-cli"
+brew "lazygit"
 brew "neovim"
 brew "node"
 brew "pandoc"

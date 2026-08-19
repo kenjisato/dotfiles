@@ -51,6 +51,7 @@ base repo leaves these slots open precisely so you never have to:
 | Slot | Put it here |
 |---|---|
 | `~/.config/git/config.local` | `xdg-config/common/git/config.local` |
+| `~/.config/lazygit/config.local.yml` | `xdg-config/common/lazygit/config.local.yml` |
 | `~/.shell.local/*.sh` | `shell/shared/.shell.local/*.sh` |
 | `~/.config/cdmarks.local.tsv` | `xdg-config/common/cdmarks.local.tsv` |
 | `profile.local.ps1` beside `$PROFILE` | `xdg-config/windows/powershell/profile.local.ps1` |
@@ -73,6 +74,7 @@ applies to anything you add here.
 | File | What it shows |
 |---|---|
 | `xdg-config/common/git/config.local.example` | per-machine git settings, including why `commit.template` belongs here |
+| `xdg-config/common/lazygit/config.local.yml.example` | per-machine lazygit settings, merged over the tracked config |
 | `xdg-config/common/cdmarks.local.tsv.example` | extra `cdb` bookmarks |
 | `shell/shared/.shell.local/10-local.sh.example` | shell snippets sourced by both zsh and bash |
 

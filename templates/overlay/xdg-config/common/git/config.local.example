@@ -11,3 +11,10 @@
     # A template path only some machines have would break `git commit` with no
     # -m (exit 128), which is why it cannot live in the tracked config.
     template = ~/.stCommitMsg
+
+[merge]
+    # zdiff3 keeps the shared context out of the conflict markers. Needs git
+    # 2.35 or newer, which is why the tracked config settles for diff3: an
+    # older git rejects the value mid-merge with exit 128 and writes no markers
+    # at all. Safe here, on a machine whose git you can check.
+    conflictstyle = zdiff3

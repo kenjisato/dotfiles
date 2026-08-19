@@ -1,0 +1,36 @@
+# Linked to ~/.config/lazygit/config.yml by etc/deploy.
+#
+# ~/.config is lazygit's own default only where XDG is native. On macOS it looks
+# in ~/Library/Application Support/lazygit, which nothing here links, so
+# ~/.shell/lazygit.sh points LG_CONFIG_FILE at this file and every OS ends up
+# reading the same deployed copy. That snippet also appends
+# ~/.config/lazygit/config.local.yml when it exists — later file wins, so that
+# is the machine-local slot.
+#
+# KEEP THIS FILE ON LAZYGIT'S CURRENT SCHEMA. An outdated key makes lazygit
+# migrate the file and save the result — through the symlink, into this repo,
+# leaving a working-tree change you did not make (verified: git.paging was
+# rewritten to git.diffRenderers this way, same failure mode as lxterminal's
+# Preferences dialog). Unknown keys, by contrast, are tolerated.
+git:
+  # `|` cycles these in order and names the one in effect; `\` goes back.
+  diffRenderers:
+    # delta recolours git's own diff, so what you see is still a patch.
+    # It cannot query the terminal background through this pipe and falls back
+    # to dark — add `--light` in config.local.yml on a light terminal.
+    - type: stdinFilter
+      name: delta
+      colorArg: always
+      command: delta --paging=never
+    # difftastic replaces the diff engine: what changed in the code, ignoring
+    # reindents and moved blocks. Inline, because its default side-by-side needs
+    # more width than the main panel has.
+    - type: extDiff
+      name: difftastic
+      command: difft --color=always --display=inline
+    # Plain git output — the one to switch to before copying a patch out.
+    - type: rawGit
+      name: git
+gui:
+  # Glyphs for the file tree. etc/install puts a Nerd Font on every OS.
+  nerdFontsVersion: "3"

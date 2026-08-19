@@ -1,0 +1,16 @@
+# Rename to config.local.yml (drop .example) to deploy this file.
+#
+# Linked to ~/.config/lazygit/config.local.yml. The base repo's
+# ~/.shell/lazygit.sh appends it to LG_CONFIG_FILE when it exists, and lazygit
+# merges the list left to right — so anything here wins over the tracked
+# config.yml, and nothing breaks when the file is absent.
+#
+# Only settings that differ per machine belong here. The example is the one that
+# actually does: delta cannot ask the terminal for its background colour through
+# lazygit's pipe, so it assumes dark.
+git:
+  diffRenderers:
+    - type: stdinFilter
+      name: delta
+      colorArg: always
+      command: delta --light --paging=never

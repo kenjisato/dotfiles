@@ -40,11 +40,14 @@ templates/   overlay skeleton, not deployed
 
 ## Don'ts
 
-Every item below has actually been violated in this repo and cost real debugging. The reasoning behind each one is in `.claude/rules/`, which loads when you open the relevant files.
+Every item below has either been violated in this repo and cost real debugging, or was caught in testing on its way in. The reasoning behind each one is in `.claude/rules/`, which loads when you open the relevant files.
 
 - **Never put identity or secrets in a tracked file.** `user.name`/`user.email` go in `~/.gitconfig`, never in `xdg-config/common/git/config`.
 - **Never reference anything the reader might not have.** No repository name, owner, URL, or personal path — in docs, code comments, or help strings alike. Write the instruction out instead of pointing at a document only some people can open, and describe an extension slot rather than whatever happens to fill it here.
 - **Never remove the `~/.gitconfig` creation step from `etc/deploy`.** Without it `git config --global` follows a symlink and writes a personal address into this repo's tracked git config.
+- **Never put `merge.conflictstyle = zdiff3` in the tracked git config.** git before 2.35 rejects the value *while merging*: exit 128 and no conflict markers written. `diff3` is understood everywhere; zdiff3 goes in `~/.config/git/config.local`.
+- **Never set `diff.external` globally.** It swaps the diff *engine* for every caller, so `git add -p` and `git diff > x.patch` stop producing a patch. difftastic stays behind the `git dft` / `dlog` / `dshow` aliases.
+- **Never let the tracked lazygit config fall behind lazygit's schema.** A renamed key makes lazygit migrate the file and save it back — through the symlink, into this repo.
 - **Never put `commit.template` in the tracked git config.** If the template file is missing, `git commit` without `-m` aborts with exit 128 on every machine that lacks it.
 - **Never put environment setup in `.bash_profile` alone.** Desktop terminal emulators spawn *non-login* shells that read only `.bashrc`. It belongs in `shell/bash/.bash/env.sh`, which both source.
 - **Never assume `etc/install` can call a tool it just installed.** The installer runs before `etc/deploy` and usually under bash, so it must put the install target (`~/.local/bin`, `~/.cargo/bin`) on its *own* `PATH`.
@@ -60,7 +63,7 @@ Nothing above is the whole story. Rationale, verified behaviours, and per-area r
 |---|---|
 | `shell/CLAUDE.md` | anything under `shell/` — zsh and bash layering, load order, key paths |
 | `.claude/rules/install-deploy.md` | `etc/*` — installer invariants, host profiles, deploy/link semantics |
-| `.claude/rules/git-config.md` | `xdg-config/common/git/*` — the two global config files and the gitleaks hook |
+| `.claude/rules/git-config.md` | `xdg-config/common/{git,lazygit}/*` — the two global config files, the delta/difftastic/lazygit split, the gitleaks hook |
 | `.claude/rules/git-in-timers.md` | `bin/*`, `.tmux.conf` — the `--no-optional-locks` rule |
 | `.claude/rules/fonts.md` | font manifests and installers — one Nerd font per platform, three mechanisms |
 | `.claude/rules/lxterminal.md` | `xdg-config/linux/lxterminal/*` — an app that writes back through its symlink |

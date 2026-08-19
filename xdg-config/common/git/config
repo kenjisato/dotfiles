@@ -27,6 +27,82 @@
     autocrlf = input
     filemode = false
     eol = lf
+    # Syntax-highlighting pager for everything diff-shaped: diff, log -p, show,
+    # stash show, blame. The command is `delta`; the package that installs it is
+    # called git-delta.
+    #
+    # Safe on a machine that has none: git starts the pager, the exec fails, and
+    # git writes the output itself — no message, exit 0 (verified on git 2.47).
+    # Unlike commit.template below, a missing tool here is a silent no-op.
+    pager = delta
+
+[interactive]
+    # The other half of the pager: `git add -p`, `git checkout -p`, ... git
+    # still parses the hunks itself, so delta may only recolour them, never
+    # restructure them — that is what --color-only means. Missing delta degrades
+    # to a plain hunk the same way as core.pager.
+    diffFilter = delta --color-only
+
+[delta]
+    # n / N jump to the next / previous file or hunk (delta drives less's search).
+    navigate = true
+    line-numbers = true
+    # dark/light is deliberately unset: delta asks the terminal for its
+    # background colour and falls back to dark if the terminal stays quiet. Pin
+    # it in config.local on a machine where the guess comes out wrong.
+    # Ad-hoc alternatives without touching config: DELTA_FEATURES=+side-by-side,
+    # or `git -c delta.line-numbers=false diff` before copying code out.
+
+[diff]
+    # Moved lines get their own colour instead of reading as delete + add.
+    colorMoved = default
+    # `git difftool` with no -t goes to the difftastic entry below.
+    tool = difftastic
+
+[merge]
+    # A conflict is written with the merge base as a third section, which is
+    # both more informative and what lets delta decorate the conflict.
+    #
+    # zdiff3 (git >= 2.35) is tidier, but must NOT be set here: on an older git
+    # the value is rejected while merging — "error: unknown style 'zdiff3'",
+    # fatal, exit 128 — so a conflict leaves no markers to resolve. diff3 is
+    # understood by every git in service. Put zdiff3 in config.local on a
+    # machine whose git is new enough.
+    conflictstyle = diff3
+
+# difftastic — a structural diff. It parses both sides with tree-sitter and
+# reports what changed in the *code*, so a reindent, a rewrapped line or a
+# block that only moved reads as unchanged. Line-based delta stays the default
+# because only its output is a patch; difftastic is asked for per command:
+#
+#     git dft [<rev>]      working tree, or against a revision
+#     git dlog / git dshow log -p / show, rendered structurally
+#     git difftool         the same via git's difftool plumbing
+#
+# diff.external is deliberately NOT set globally: it replaces the diff engine
+# for every caller, so `git add -p`, `git diff > x.patch` and anything else
+# reading the output would get a display instead of a patch. Keep it scoped to
+# these aliases, where asking for it is the point.
+[alias]
+    dft = -c diff.external=difft diff
+    dlog = -c diff.external=difft log -p --ext-diff
+    dshow = -c diff.external=difft show --ext-diff
+
+[difftool]
+    prompt = false
+
+[difftool "difftastic"]
+    # git's external-diff argument order. $MERGED is the path as git knows it,
+    # so the heading shows the real filename rather than a temp path; the hash
+    # and mode arguments only fill the remaining positions.
+    cmd = difft "$MERGED" "$LOCAL" "abcdef1" "100644" "$REMOTE" "abcdef2" "100644"
+
+[pager]
+    # Send difftool output through core.pager, so a long structural diff scrolls
+    # like any other. delta passes difftastic's own colours through untouched
+    # (verified). An interactive difftool needs this off for that window:
+    # `git -c pager.difftool=false difftool -t vimdiff`.
+    difftool = true
 
 [http]
     postBuffer = 16M

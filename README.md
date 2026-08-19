@@ -130,6 +130,7 @@ untracked locations. Fill in whichever you need; nothing else has to change:
 | `~/.gitconfig` | git identity and credential helpers |
 | `~/.config/git/config.local` | any other git settings; `[include]`d by the deployed `git/config` |
 | `~/.shell.local/*.sh` | zsh + bash snippets, sourced at the end of both rc files |
+| `~/.config/lazygit/config.local.yml` | lazygit settings, merged over the deployed config (later file wins) |
 | `~/.config/cdmarks.local.tsv` | extra `cdb` bookmarks, merged with the tracked ones |
 | `profile.local.ps1` next to `$PROFILE` | PowerShell additions, dot-sourced by the deployed profile |
 
@@ -256,6 +257,22 @@ identity lines into `~/.gitconfig`, anything else machine-specific into
 ## Key features
 
 - **Global git pre-commit secret scan**: `etc/install` sets `core.hooksPath = ~/.config/git/hooks` and `etc/deploy` symlinks `xdg-config/common/git/hooks/pre-commit` into it. Every commit on every repo runs [gitleaks](https://github.com/gitleaks/gitleaks) against staged changes and blocks if a secret-shaped string is found. Bypass with `git commit --no-verify` only when you have a reason; CI should re-scan on push as a backstop. False positives go in `.gitleaks.toml` per-repo
+- **git diff toolchain** — three tools with three jobs, wired in
+  [xdg-config/common/git/config](xdg-config/common/git/config) and
+  [xdg-config/common/lazygit/config.yml](xdg-config/common/lazygit/config.yml):
+  - [delta](https://github.com/dandavison/delta) is the pager for everything
+    diff-shaped (`git diff`, `log -p`, `show`, `blame`, `add -p`) — syntax
+    highlighting, `n`/`N` between hunks, and its output is still a patch.
+    Always on; a machine without it just gets plain git output
+  - [difftastic](https://difftastic.wilfred.me.uk/) is a *structural* diff — it
+    parses both sides, so a reindent or a moved block reads as unchanged. Asked
+    for per command (`git dft`, `git dlog`, `git dshow`, `git difftool`), never
+    globally, because it prints a display rather than an applicable patch
+  - [lazygit](https://github.com/jesseduffield/lazygit) is the TUI for staging,
+    committing and rebasing, and renders diffs through both: `|` cycles delta →
+    difftastic → plain git
+
+  macOS, Linux and WSL only — the Windows deploy links no git config.
 - **Shell**: zsh with [starship](https://starship.rs) prompt (Nerd Font required for icons; installed automatically on macOS via Brewfile, on Windows via `pkg/windows-fonts.txt`, and on Linux via `pkg/linux-fonts.txt`)
 - **Repository management**: [ghq](https://github.com/x-motemen/ghq) — `ghq get <url>`, `ghq list`, `ghq list -p` (full paths). Default root `~/ghq`; layout `<host>/<owner>/<repo>`.
 - **Ctrl+]**: fzf picker over `ghq list -p` → `cd` to selection ([shell/zsh/.zsh/20-fzf.zsh](shell/zsh/.zsh/20-fzf.zsh)); same binding in PowerShell ([xdg-config/windows/powershell/Microsoft.PowerShell_profile.ps1](xdg-config/windows/powershell/Microsoft.PowerShell_profile.ps1))

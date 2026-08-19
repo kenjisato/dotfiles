@@ -135,6 +135,7 @@ done < <(find "$OVERLAY" -type f -not -path "$OVERLAY/.git/*" -print0)
 echo "Extension slots:"
 for slot in \
   "$HOME/.config/git/config.local" \
+  "$HOME/.config/lazygit/config.local.yml" \
   "$HOME/.config/cdmarks.local.tsv" \
   "$HOME/.shell.local"; do
   if awk -F'\t' -v d="$slot" '$1==d {found=1} END {exit !found}' "$TMP/over"; then

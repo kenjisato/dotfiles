@@ -2,6 +2,7 @@
 paths:
   - "xdg-config/common/git/*"
   - "xdg-config/common/git/**/*"
+  - "xdg-config/common/lazygit/*"
 ---
 
 # Global git config — two files, and which one wins
@@ -33,3 +34,28 @@ A relative `[include] path` resolves against the directory of the *symlink* (`~/
 Every `git commit` then scans the staged diff with gitleaks first. Bypass with `git commit --no-verify`; silence a pattern with a repo-local `.gitleaks.toml`. CI should also scan on push — pre-commit guards against *accidents*, it is not a security boundary.
 
 The hook picks its subcommand at runtime because gitleaks 8.19 superseded `protect` with `git`, and 8.30 already hides `protect` from `--help`. This matters more than it looks: an unknown subcommand exits **1**, the same code as "leaks found", so hardcoding a removed subcommand would block every commit with a misleading secret-found message instead of failing visibly. The hook is fail-open on any other exit code — a missing gitleaks warns and allows the commit.
+
+# Diff toolchain — delta, difftastic, lazygit
+
+Three tools, three jobs, and they are not alternatives:
+
+| Tool | What it is | How it is wired |
+|---|---|---|
+| delta (`delta`, package `git-delta`) | Pager: takes git's own line-based diff and recolours it | `core.pager` + `interactive.diffFilter` — always on |
+| difftastic (`difft`) | Diff *engine*: parses both sides with tree-sitter, reports what changed in the code | `git dft` / `dlog` / `dshow` aliases + the `difftastic` difftool — per command |
+| lazygit | TUI for staging, committing, rebasing | own config, renders diffs through the two above |
+
+Why delta is global and difftastic is not: delta's output is still a patch, so nothing downstream changes. difftastic's is a *display* — set `diff.external = difft` globally and `git add -p`, `git diff > x.patch`, and every script parsing a diff get something git cannot apply. The aliases keep the choice at the call site. (Upstream also notes git ≤ 2.43.1 can crash on an external diff when file permissions changed.)
+
+Verified behaviours, all on git 2.47:
+
+- **`core.pager` and `interactive.diffFilter` pointing at a missing command are silent no-ops.** git starts the pager, the exec fails, and git writes the output itself — no message, exit 0. So `pager = delta` is safe in the tracked config even on a box where `brew bundle` never ran; this is *not* the `commit.template` trap.
+- **`merge.conflictstyle` rejects an unknown value fatally, while merging.** `git merge` on a conflicting file dies with `error: unknown style '<x>'` / exit 128 and writes no conflict markers. `zdiff3` is only understood from git 2.35, so the tracked config carries `diff3` and zdiff3 belongs in `config.local`.
+- **difftastic's output survives delta.** With `diff.external=difft` and `core.pager=delta`, delta passes the structural display through untouched, colours included — so the aliases need no pager override. Same for `pager.difftool = true`. An interactive difftool does need `-c pager.difftool=false`.
+- **`difftool.difftastic.cmd` passes `$MERGED` first** (git's external-diff argument order), which is what makes the heading show the real path instead of a temp file. The hash and mode arguments are placeholders filling the remaining positions.
+
+# lazygit's config file
+
+`xdg-config/common/lazygit/config.yml` deploys to `~/.config/lazygit/config.yml`, which lazygit finds on Linux and WSL only: on macOS its config home is `~/Library/Application Support/lazygit`, outside anything `etc/deploy` links. `~/.shell/lazygit.sh` therefore exports `LG_CONFIG_FILE`, and that variable is a comma-separated list merged left to right — so it appends `~/.config/lazygit/config.local.yml` as the per-machine slot. **Every file listed must exist**: a missing one aborts lazygit before the UI opens (`stat …: no such file or directory`), hence the guards in the snippet.
+
+**lazygit rewrites its own config file when the schema moved on** — "must be migrated… Config file saved successfully" — and with `LG_CONFIG_FILE` pointing into the deployed symlink, that write lands in this repo as an unexplained working-tree change. Same failure mode as lxterminal's Preferences dialog. Keep the tracked file on the current schema: `git.paging` became `git.pagers` became `git.diffRenderers`, whose entries are `{type: stdinFilter|extDiff|rawGit, name, colorArg, command}`. Unknown *keys* are tolerated, so only a renamed one triggers a rewrite. `|` cycles the renderers in the panel (delta → difftastic → plain git), `\` reverses.
