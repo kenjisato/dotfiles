@@ -1,11 +1,13 @@
-# Linked to ~/.config/lazygit/config.yml by etc/deploy.
+# Linked to ~/.config/lazygit/config.yml by etc/deploy and etc/deploy.ps1.
 #
-# ~/.config is lazygit's own default only where XDG is native. On macOS it looks
-# in ~/Library/Application Support/lazygit, which nothing here links, so
-# ~/.shell/lazygit.sh points LG_CONFIG_FILE at this file and every OS ends up
-# reading the same deployed copy. That snippet also appends
-# ~/.config/lazygit/config.local.yml when it exists — later file wins, so that
-# is the machine-local slot.
+# ~/.config is lazygit's own default only where XDG is native — Linux and WSL. On
+# macOS it looks in ~/Library/Application Support/lazygit and on Windows in
+# %LOCALAPPDATA%\lazygit, neither of which anything here links, so LG_CONFIG_FILE
+# names this file explicitly: ~/.shell/lazygit.sh does it for zsh and bash, the
+# deployed PowerShell profile for pwsh. Both also append
+# ~/.config/lazygit/config.local.yml when it exists — later file wins, so that is
+# the machine-local slot — and both guard on existence, since a listed file that
+# is not there aborts lazygit before its UI opens.
 #
 # KEEP THIS FILE ON LAZYGIT'S CURRENT SCHEMA. An outdated key makes lazygit
 # migrate the file and save the result — through the symlink, into this repo,

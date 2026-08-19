@@ -89,6 +89,28 @@ if (Get-Command starship -ErrorAction SilentlyContinue) {
     Invoke-Expression (& starship init powershell)
 }
 
+# lazygit — name the deployed config explicitly.
+#
+# On Windows lazygit's config home is %LOCALAPPDATA%\lazygit, which nothing
+# links, so point it at the file etc/deploy.ps1 puts under ~/.config. Mirrors
+# ~/.shell/lazygit.sh on the Unix side, including the two rules that matter: the
+# value is a comma-separated list lazygit merges left to right, which is how a
+# machine-local file joins in, and every listed file must exist — a missing one
+# aborts lazygit before its UI opens.
+#
+# This reaches PowerShell sessions only. lazygit started from cmd, Git Bash or a
+# shortcut falls back to %LOCALAPPDATA% and its own defaults; promote this to a
+# user environment variable if that ever matters.
+$lazygitConfig = Join-Path $HOME '.config\lazygit\config.yml'
+if (Test-Path -LiteralPath $lazygitConfig) {
+    $lazygitLocal = Join-Path $HOME '.config\lazygit\config.local.yml'
+    if (Test-Path -LiteralPath $lazygitLocal) {
+        $Env:LG_CONFIG_FILE = "$lazygitConfig,$lazygitLocal"
+    } else {
+        $Env:LG_CONFIG_FILE = $lazygitConfig
+    }
+}
+
 # Personal env hooks.
 $Env:ZM_HOME = "$HOME/.zm"
 

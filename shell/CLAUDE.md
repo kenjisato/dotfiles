@@ -31,7 +31,7 @@
 
 ## Shared and machine-local
 
-`~/.shell/*.sh` is sourced by both shells at the end of their rc — currently `cdb.sh` (bookmark navigation, reading `~/.config/cdmarks.tsv` + `~/.config/cdmarks.local.tsv`) and `lazygit.sh` (exports `LG_CONFIG_FILE`, because `~/.config` is lazygit's config home on Linux only; see `.claude/rules/git-config.md`).
+`~/.shell/*.sh` is sourced by both shells at the end of their rc — currently `cdb.sh` (bookmark navigation, reading `~/.config/cdmarks.tsv` + `~/.config/cdmarks.local.tsv`) and `lazygit.sh` (exports `LG_CONFIG_FILE`, because `~/.config` is lazygit's config home on Linux only; the deployed PowerShell profile does the same on Windows — see `.claude/rules/git-config.md`).
 
 `~/.shell.local/*.sh` is sourced immediately after, guarded by `[ -d ~/.shell.local ]`. That directory is **untracked and per-machine** — put installer-managed init (juliaup, asdf, …) there so it never lands in the symlinked, tracked rc files. Several third-party installers append PATH lines to rc files by default; suppress that and use this directory instead, or they will dirty this repo's working tree through the symlink.
 

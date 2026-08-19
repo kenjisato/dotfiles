@@ -7,6 +7,7 @@
 #   home/common/.vim/                                               ->  $HOME/.vim/
 #   home/windows/.psmux.conf                                        ->  $HOME/.psmux.conf
 #   xdg-config/common/starship.toml                                 ->  $HOME/.config/starship.toml
+#   xdg-config/common/lazygit/config.yml                            ->  $HOME/.config/lazygit/config.yml
 #   xdg-config/common/git/config                                    ->  $HOME/.config/git/config
 #   xdg-config/common/git/ignore                                    ->  $HOME/.config/git/ignore
 #   xdg-config/common/git/hooks/pre-commit                          ->  $HOME/.config/git/hooks/
@@ -138,6 +139,12 @@ function Invoke-DeployTree {
     # keeps them inside the Nerd font pkg/windows-fonts.txt installs.
     New-DotfileLink (Join-Path $TreeRoot 'xdg-config\common\starship.toml') `
                     (Join-Path $HOME '.config\starship.toml')
+
+    # lazygit reads %LOCALAPPDATA%\lazygit on Windows, not ~/.config, so linking
+    # this is only half the job: the deployed PowerShell profile points
+    # LG_CONFIG_FILE at the link, the way ~/.shell/lazygit.sh does on Unix.
+    New-DotfileLink (Join-Path $TreeRoot 'xdg-config\common\lazygit\config.yml') `
+                    (Join-Path $HOME '.config\lazygit\config.yml')
 
     # git — the same three destinations the bash deploy's xdg-config/common
     # recursion produces on macOS/Linux. git-for-windows resolves ~/.config the
