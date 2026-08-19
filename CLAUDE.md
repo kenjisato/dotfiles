@@ -52,6 +52,7 @@ Every item below has either been violated in this repo and cost real debugging, 
 - **Never put environment setup in `.bash_profile` alone.** Desktop terminal emulators spawn *non-login* shells that read only `.bashrc`. It belongs in `shell/bash/.bash/env.sh`, which both source.
 - **Never assume `etc/install` can call a tool it just installed.** The installer runs before `etc/deploy` and usually under bash, so it must put the install target (`~/.local/bin`, `~/.cargo/bin`) on its *own* `PATH`.
 - **Never make a package loop in `etc/install` fatal.** `set -e` plus one unavailable package used to skip every configuration step that followed. Warn and continue.
+- **Never rely on the Nerd font for emoji.** Nerd patching only adds private-use glyphs, so starship's emoji defaults (package, python, …) render as tofu on a box with no emoji font. `xdg-config/common/starship.toml` pins the symbols instead — keep it generated from `starship preset nerd-font-symbols`.
 - **Never call `git` on a timer without `--no-optional-locks`.** `git status` takes `.git/index.lock`, so a status-bar or prompt caller breaks interactive `git add`/`git commit` intermittently.
 - **Never hardcode a `gitleaks` subcommand.** An unknown subcommand exits `1` — the same code as "leaks found" — so a removed one blocks every commit with a misleading message.
 
@@ -65,7 +66,7 @@ Nothing above is the whole story. Rationale, verified behaviours, and per-area r
 | `.claude/rules/install-deploy.md` | `etc/*` — installer invariants, host profiles, deploy/link semantics |
 | `.claude/rules/git-config.md` | `xdg-config/common/{git,lazygit}/*` — the two global config files, the delta/difftastic/lazygit split, the gitleaks hook |
 | `.claude/rules/git-in-timers.md` | `bin/*`, `.tmux.conf` — the `--no-optional-locks` rule |
-| `.claude/rules/fonts.md` | font manifests and installers — one Nerd font per platform, three mechanisms |
+| `.claude/rules/fonts.md` | font manifests and installers, `starship.toml` — one Nerd font per platform, three mechanisms, and why the prompt avoids emoji |
 | `.claude/rules/lxterminal.md` | `xdg-config/linux/lxterminal/*` — an app that writes back through its symlink |
 
 `shell/` uses a nested `CLAUDE.md` rather than a path-scoped rule on purpose: it is full of dot-prefixed files *and* dot-prefixed directories (`.bash/`, `.zsh/`), and a directory-triggered file cannot be defeated by a glob that ignores leading dots. Everything else has ordinary filenames, so a `paths:` rule is fine.

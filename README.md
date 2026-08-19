@@ -310,7 +310,7 @@ identity lines into `~/.gitconfig`, anything else machine-specific into
   `pkg/winget-packages.txt` and the git config is linked — but lazygit reads
   `%LOCALAPPDATA%\lazygit`, which nothing links, so it falls back to its own
   built-in renderer there.
-- **Shell**: zsh with [starship](https://starship.rs) prompt (Nerd Font required for icons; installed automatically on macOS via Brewfile, on Windows via `pkg/windows-fonts.txt`, and on Linux via `pkg/linux-fonts.txt`)
+- **Shell**: zsh with [starship](https://starship.rs) prompt (Nerd Font required for icons; installed automatically on macOS via Brewfile, on Windows via `pkg/windows-fonts.txt`, and on Linux via `pkg/linux-fonts.txt`). [xdg-config/common/starship.toml](xdg-config/common/starship.toml) pins every module symbol to a Nerd Font glyph, generated with `starship preset nerd-font-symbols`: starship's own defaults are emoji, and a Nerd-patched font carries none, so on a box without a separate emoji font those defaults render as empty boxes
 - **Repository management**: [ghq](https://github.com/x-motemen/ghq) — `ghq get <url>`, `ghq list`, `ghq list -p` (full paths). Default root `~/ghq`; layout `<host>/<owner>/<repo>`.
 - **Ctrl+]**: fzf picker over `ghq list -p` → `cd` to selection ([shell/zsh/.zsh/20-fzf.zsh](shell/zsh/.zsh/20-fzf.zsh)); same binding in PowerShell ([xdg-config/windows/powershell/Microsoft.PowerShell_profile.ps1](xdg-config/windows/powershell/Microsoft.PowerShell_profile.ps1))
 - **`cdb`**: bookmark navigation (`cdb /list`, `cdb /add <name>`, `cdb <name>`)

@@ -6,6 +6,7 @@
 #   home/common/.vimrc                                              ->  $HOME/.vimrc
 #   home/common/.vim/                                               ->  $HOME/.vim/
 #   home/windows/.psmux.conf                                        ->  $HOME/.psmux.conf
+#   xdg-config/common/starship.toml                                 ->  $HOME/.config/starship.toml
 #   xdg-config/common/git/config                                    ->  $HOME/.config/git/config
 #   xdg-config/common/git/ignore                                    ->  $HOME/.config/git/ignore
 #   xdg-config/common/git/hooks/pre-commit                          ->  $HOME/.config/git/hooks/
@@ -131,6 +132,12 @@ function Invoke-DeployTree {
 
     # home/windows/* -> $HOME (Windows-only dotfiles, e.g. psmux config)
     New-DotfileLink (Join-Path $TreeRoot 'home\windows\.psmux.conf') (Join-Path $HOME '.psmux.conf')
+
+    # starship reads ~/.config/starship.toml on Windows too, so the prompt's
+    # symbols come from the same tracked file as everywhere else — which is what
+    # keeps them inside the Nerd font pkg/windows-fonts.txt installs.
+    New-DotfileLink (Join-Path $TreeRoot 'xdg-config\common\starship.toml') `
+                    (Join-Path $HOME '.config\starship.toml')
 
     # git — the same three destinations the bash deploy's xdg-config/common
     # recursion produces on macOS/Linux. git-for-windows resolves ~/.config the
