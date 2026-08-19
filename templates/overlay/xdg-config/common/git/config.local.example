@@ -1,0 +1,13 @@
+# Rename to config.local (drop .example) to deploy this file.
+#
+# Linked to ~/.config/git/config.local, which the base repo's tracked
+# ~/.config/git/config pulls in with a relative [include] at the end. A missing
+# file is ignored, and settings here win over the tracked ones.
+#
+# Identity is the exception: put user.name / user.email in ~/.gitconfig instead.
+# git reads that file last, so it would override whatever you write here.
+
+[commit]
+    # A template path only some machines have would break `git commit` with no
+    # -m (exit 128), which is why it cannot live in the tracked config.
+    template = ~/.stCommitMsg

@@ -139,20 +139,51 @@ out of the tracked rc files, which are symlinks into this repo.
 
 ### Deploying a set of them together
 
-If you keep those files in one directory — to carry them across your own
-machines, for instance — point `$DOTFILES_PRIVATE` at it and `etc/deploy` will
-link them alongside these:
+To keep those files in one directory — versioned, carried across machines — tell
+this repo about it once, and `etc/deploy` links them alongside its own from then
+on:
 
 ```bash
-DOTFILES_PRIVATE=/path/to/your/extras bash etc/deploy
+bash etc/overlay-init --create               # scaffold one from templates/overlay
+bash etc/overlay-init ~/path/to/existing     # adopt a directory you already have
+bash etc/overlay-init --clone owner/repo     # clone a remote first (uses ghq when installed)
+bash etc/overlay-init                        # show what's configured
+bash etc/overlay-init --forget               # stop using it (deletes nothing)
 ```
 
-The same tree walk runs against that directory *after* this one, so its files
-win wherever they share a destination path. `$DOTFILES` overrides the location of
+`--clone` also takes a full git URL, and `--path <dir>` picks the clone
+destination. Adopting or cloning runs the collision check below straight away.
+
+The path is recorded in `~/.config/dotfiles/overlay`, so plain `bash etc/deploy`
+picks it up with no environment variable. `$DOTFILES_PRIVATE` overrides the
+record for one run, and a recorded path that has gone missing produces a warning
+rather than a silent skip:
+
+```bash
+DOTFILES_PRIVATE=/some/other/dir bash etc/deploy   # one-off, ignores the record
+```
+
+`templates/overlay/` also ships an `etc/deploy` shim, so running `bash etc/deploy`
+from *inside* an overlay made this way deploys both trees without configuring
+anything at all.
+
+The same tree walk runs against the overlay *after* this repo, so its files win
+wherever they share a destination path. `$DOTFILES` overrides the location of
 this repo if it isn't at `~/dotfiles` (`$HOME\dotfiles` on Windows), and
 `etc/undeploy` removes symlinks pointing into either directory.
 
 ### Rules for an extension that won't collide
+
+```bash
+bash etc/overlay-check              # audit the configured overlay
+bash etc/overlay-check <dir>        # audit any directory
+bash etc/overlay-check --os macos   # audit as a different host OS
+```
+
+It lists any file of yours that would replace one of ours, any file deploy would
+never link (wrong OS directory, or outside the walked paths), and which slots you
+have filled. Exit status is 1 when a collision exists, so it works as a
+pre-commit gate in your own repo.
 
 | Rule | Why |
 |---|---|

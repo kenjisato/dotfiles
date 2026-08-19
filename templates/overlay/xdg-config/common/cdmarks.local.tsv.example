@@ -1,0 +1,7 @@
+# Rename to cdmarks.local.tsv (drop .example) to deploy this file.
+#
+# Extra `cdb` bookmarks, merged with the base repo's cdmarks.tsv.
+# Format: <name>\t<path>   (a real tab between the two columns)
+#
+# notes	~/Documents/notes
+# work	~/src/work

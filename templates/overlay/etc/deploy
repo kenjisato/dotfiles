@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+#
+# Deploy this overlay together with the base dotfiles.
+#
+# Points $DOTFILES_PRIVATE at this directory and hands off to the base repo's
+# etc/deploy, which links the base tree first and this one on top. Every flag is
+# forwarded, so `bash etc/deploy --dry-run` previews both trees.
+#
+# Set $DOTFILES if the base repo is not at ~/dotfiles.
+
+set -e
+
+OVERLAY="$(cd "$(dirname "$0")/.." && pwd)"
+DOTFILES="${DOTFILES:-$HOME/dotfiles}"
+
+if [ ! -f "$DOTFILES/etc/deploy" ]; then
+  echo "Base dotfiles not found at $DOTFILES." >&2
+  echo "Set \$DOTFILES to where you cloned it, e.g.:" >&2
+  echo "  DOTFILES=~/src/dotfiles bash etc/deploy" >&2
+  exit 1
+fi
+
+exec env DOTFILES_PRIVATE="$OVERLAY" bash "$DOTFILES/etc/deploy" "$@"

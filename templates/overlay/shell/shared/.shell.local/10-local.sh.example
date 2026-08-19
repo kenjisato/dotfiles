@@ -1,0 +1,10 @@
+# Rename to 10-local.sh (drop .example) to activate.
+#
+# This whole directory is linked to ~/.shell.local, and both .zshrc and .bashrc
+# source ~/.shell.local/*.sh at the end of their startup. Use it for anything
+# machine- or account-specific, and for installer-managed init (juliaup, asdf,
+# conda hooks) that would otherwise be appended to the rc files themselves —
+# those are symlinks into the base repo, so an appending installer dirties it.
+
+# export SOME_TOKEN_PATH="$HOME/.config/example/token"
+# [ -f "$HOME/.juliaup/env" ] && . "$HOME/.juliaup/env"

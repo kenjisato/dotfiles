@@ -18,6 +18,8 @@ bash etc/install --profile server  # headless box: skip GUI casks (the profile i
 bash etc/deploy                    # detect OS, create symlinks (idempotent)
 bash etc/deploy --dry-run          # preview
 bash etc/undeploy                  # remove only symlinks pointing into this repo
+bash etc/overlay-init --create      # scaffold an overlay and record its path
+bash etc/overlay-check              # audit an overlay for collisions with our files
 ```
 
 Windows: `pwsh -File etc\install.ps1`, then `pwsh -File etc\deploy.ps1`.
@@ -27,10 +29,11 @@ Windows: `pwsh -File etc\install.ps1`, then `pwsh -File etc\deploy.ps1`.
 ```
 home/        ~/.* dotfiles              shell/   zsh/, bash/, shared/ rc files
 xdg-config/  ~/.config/<dir>            bin/     ~/bin scripts
-pkg/         package + font manifests   etc/     install / deploy / undeploy
+pkg/         package + font manifests   etc/     install / deploy / undeploy / overlay-*
+templates/   overlay skeleton, not deployed
 ```
 
-`home/`, `xdg-config/`, and `bin/` each split into `common/` plus one directory per OS (`macos/`, `linux/`, `wsl/`, `windows/`); deploy links `common/` and the detected OS only, so putting a file in the wrong OS directory silently means it is never linked. `shell/` splits by shell instead (`zsh/`, `bash/`, `shared/`) and is linked on every Unix host.
+`home/`, `xdg-config/`, and `bin/` each split into `common/` plus one directory per OS (`macos/`, `linux/`, `wsl/`, `windows/`); deploy links `common/` and the detected OS only, so putting a file in the wrong OS directory silently means it is never linked. `shell/` splits by shell instead (`zsh/`, `bash/`, `shared/`) and is linked on every Unix host. `pkg/`, `etc/`, and `templates/` are outside the walk entirely, which is what makes it safe to ship a skeleton overlay inside the repo.
 
 ## Don'ts
 

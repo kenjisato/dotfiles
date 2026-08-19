@@ -1,0 +1,179 @@
+#!/usr/bin/env bash
+#
+# Set up the overlay directory deploy links on top of this repo, and remember
+# where it is so a plain `bash etc/deploy` picks it up.
+#
+# Usage:
+#   bash etc/overlay-init                     # show what is configured now
+#   bash etc/overlay-init <dir>               # use a directory you already have
+#   bash etc/overlay-init --clone <repo|url>  # clone a remote, then use it
+#   bash etc/overlay-init --create [<dir>]    # scaffold from templates/overlay
+#   bash etc/overlay-init --forget            # stop using an overlay
+#
+# Options:
+#   --path <dir>   destination for --clone (default: ~/<repo>, or the ghq tree)
+#   --no-save      configure for this run only, do not record the path
+#
+# <repo|url> accepts a full git URL or owner/repo (assumed to be on GitHub).
+# The recorded path lives in ~/.config/dotfiles/overlay; $DOTFILES_PRIVATE
+# always overrides it.
+
+set -e
+
+DOTFILES="$(cd "$(dirname "$0")/.." && pwd)"
+OVERLAY_MARKER="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/overlay"
+TEMPLATE="$DOTFILES/templates/overlay"
+
+MODE="status"
+TARGET=""
+DEST=""
+SAVE=1
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --clone)   MODE="clone";  TARGET="$2"; shift 2 ;;
+    --clone=*) MODE="clone";  TARGET="${1#*=}"; shift ;;
+    --create)  MODE="create"; shift
+               case "${1:-}" in ""|-*) ;; *) DEST="$1"; shift ;; esac ;;
+    --forget)  MODE="forget"; shift ;;
+    --path)    DEST="$2"; shift 2 ;;
+    --path=*)  DEST="${1#*=}"; shift ;;
+    --no-save) SAVE=0; shift ;;
+    -h|--help) sed -n '3,21p' "$0" | sed 's/^# \?//'; exit 0 ;;
+    -*) echo "Unknown option: $1" >&2; exit 2 ;;
+    *) MODE="adopt"; TARGET="$1"; shift ;;
+  esac
+done
+
+recorded() {
+  [ -f "$OVERLAY_MARKER" ] || return 1
+  sed -n '1p' "$OVERLAY_MARKER" | tr -d '\r'
+}
+
+save_marker() {
+  local path="$1"
+  if [ "$SAVE" -eq 0 ]; then
+    echo
+    echo "Not recorded (--no-save). Use it for one run with:"
+    echo "  DOTFILES_PRIVATE=$path bash etc/deploy"
+    return 0
+  fi
+  mkdir -p "$(dirname "$OVERLAY_MARKER")"
+  printf '%s\n' "$path" > "$OVERLAY_MARKER"
+  echo "Recorded in $OVERLAY_MARKER"
+}
+
+case "$MODE" in
+
+status)
+  echo "Base:     $DOTFILES"
+  if [ -n "${DOTFILES_PRIVATE:-}" ]; then
+    echo "Overlay:  $DOTFILES_PRIVATE   (from \$DOTFILES_PRIVATE, overrides the recorded path)"
+  elif path="$(recorded)" && [ -n "$path" ]; then
+    if [ -d "$path" ]; then
+      echo "Overlay:  $path   (recorded)"
+    else
+      echo "Overlay:  $path   (recorded, but MISSING — deploy will warn and skip it)"
+    fi
+  else
+    echo "Overlay:  (none)"
+    echo
+    echo "Add one with any of:"
+    echo "  bash etc/overlay-init --create              # scaffold a new one"
+    echo "  bash etc/overlay-init ~/path/to/existing    # adopt a directory"
+    echo "  bash etc/overlay-init --clone owner/repo    # clone a remote"
+  fi
+  ;;
+
+forget)
+  if [ -f "$OVERLAY_MARKER" ]; then
+    rm -f "$OVERLAY_MARKER"
+    echo "Removed $OVERLAY_MARKER — deploy will link only this repo."
+  else
+    echo "No overlay was recorded; nothing to do."
+  fi
+  echo "Nothing was deleted from disk. Run 'bash etc/undeploy' first if you also"
+  echo "want the symlinks it created removed."
+  ;;
+
+create)
+  [ -n "$DEST" ] || DEST="$HOME/dotfiles-overlay"
+  if [ -e "$DEST" ] && [ -n "$(ls -A "$DEST" 2>/dev/null)" ]; then
+    echo "$DEST already exists and is not empty." >&2
+    echo "Adopt it instead: bash etc/overlay-init \"$DEST\"" >&2
+    exit 1
+  fi
+  [ -d "$TEMPLATE" ] || { echo "Template missing at $TEMPLATE" >&2; exit 1; }
+  mkdir -p "$DEST"
+  # -a keeps the shim executable; the /. suffix copies contents including dotfiles.
+  cp -a "$TEMPLATE/." "$DEST/"
+  DEST="$(cd "$DEST" && pwd)"
+  echo "Created $DEST from templates/overlay"
+  save_marker "$DEST"
+  echo
+  echo "Next: read $DEST/README.md, then drop the .example suffix from whichever"
+  echo "sample files you want, and run 'bash etc/deploy' here."
+  ;;
+
+clone)
+  [ -n "$TARGET" ] || { echo "--clone needs a repo or URL" >&2; exit 2; }
+  command -v git > /dev/null 2>&1 || { echo "git is required" >&2; exit 1; }
+
+  case "$TARGET" in
+    *://*|*@*:*) URL="$TARGET" ;;
+    */*)         URL="https://github.com/$TARGET.git" ;;
+    *) echo "Cannot read '$TARGET' as a repo — use owner/repo or a full URL" >&2; exit 2 ;;
+  esac
+  NAME="$(basename "${TARGET%.git}")"
+
+  if [ -z "$DEST" ] && command -v ghq > /dev/null 2>&1; then
+    # This repo standardises on ghq, so honour its tree when no path was given.
+    echo "Cloning with ghq..."
+    ghq get "$TARGET"
+    matches="$(ghq list --full-path | grep -E "/${NAME}\$" || true)"
+    count="$(printf '%s\n' "$matches" | grep -c . || true)"
+    if [ "$count" != 1 ]; then
+      echo "ghq holds $count repos ending in /$NAME — cannot pick one." >&2
+      echo "Re-run with an explicit path: --clone $TARGET --path <dir>" >&2
+      exit 1
+    fi
+    DEST="$matches"
+  else
+    [ -n "$DEST" ] || DEST="$HOME/$NAME"
+    if [ -e "$DEST" ] && [ -n "$(ls -A "$DEST" 2>/dev/null)" ]; then
+      echo "$DEST already exists and is not empty — adopt it instead:" >&2
+      echo "  bash etc/overlay-init \"$DEST\"" >&2
+      exit 1
+    fi
+    echo "Cloning $URL -> $DEST"
+    git clone "$URL" "$DEST"
+  fi
+
+  DEST="$(cd "$DEST" && pwd)"
+  echo "Overlay at $DEST"
+  save_marker "$DEST"
+  echo
+  bash "$DOTFILES/etc/overlay-check" "$DEST" || true
+  ;;
+
+adopt)
+  [ -d "$TARGET" ] || { echo "Not a directory: $TARGET" >&2; exit 1; }
+  DEST="$(cd "$TARGET" && pwd)"
+  if [ "$DEST" = "$DOTFILES" ]; then
+    echo "That is this repo — an overlay has to be a different directory." >&2
+    exit 1
+  fi
+  echo "Overlay at $DEST"
+
+  # An empty directory is almost certainly a mistake; offer the scaffold.
+  if [ -z "$(ls -A "$DEST" 2>/dev/null)" ]; then
+    echo
+    echo "It is empty. To start from the skeleton instead:"
+    echo "  bash etc/overlay-init --create \"$DEST\""
+  fi
+  save_marker "$DEST"
+  echo
+  bash "$DOTFILES/etc/overlay-check" "$DEST" || true
+  ;;
+
+esac

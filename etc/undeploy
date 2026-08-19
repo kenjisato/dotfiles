@@ -25,13 +25,27 @@ for arg in "$@"; do
   esac
 done
 
+OVERLAY_MARKER="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/overlay"
+
+# Overlay path: $DOTFILES_PRIVATE wins, then whatever etc/overlay-init recorded.
+# A configured-but-missing path warns rather than being silently ignored — a
+# silent skip here reads exactly like "the overlay has nothing for this host".
 PRIVATE=""
-if [ -n "${DOTFILES_PRIVATE:-}" ] && [ -d "$DOTFILES_PRIVATE" ]; then
+if [ -n "${DOTFILES_PRIVATE:-}" ]; then
   PRIVATE="$DOTFILES_PRIVATE"
+  PRIVATE_FROM="\$DOTFILES_PRIVATE"
+elif [ -f "$OVERLAY_MARKER" ]; then
+  PRIVATE="$(sed -n '1p' "$OVERLAY_MARKER" | tr -d '\r')"
+  PRIVATE_FROM="recorded"
+fi
+if [ -n "$PRIVATE" ] && [ ! -d "$PRIVATE" ]; then
+  echo "warning: overlay $PRIVATE ($PRIVATE_FROM) does not exist — ignoring." >&2
+  echo "         fix it with 'bash etc/overlay-init <dir>' or 'bash etc/overlay-init --forget'." >&2
+  PRIVATE=""
 fi
 
 echo "Source:       $DOTFILES"
-[ -n "$PRIVATE" ] && echo "Overlay:      $PRIVATE" || echo "Overlay:      (none)"
+[ -n "$PRIVATE" ] && echo "Overlay:      $PRIVATE ($PRIVATE_FROM)" || echo "Overlay:      (none — see etc/overlay-init)"
 [ $DRY_RUN -eq 1 ] && echo "(dry-run — no changes will be made)"
 echo
 
