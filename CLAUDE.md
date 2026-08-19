@@ -8,7 +8,9 @@ Three consequences do most of the work:
 
 1. **Every instruction must be followable with only this repo and the machine in front of you.** A comment, doc line, or help string that sends the reader somewhere they might not have is where setup stops.
 2. **The same tracked files have to work on every machine.** Nothing host-specific gets baked in, and secrets and identity never enter version control at all. Both go in the machine-local slots the deployed config already reaches.
-3. **Defining how to extend and override these settings is part of the job.** Overriding is a supported operation, not an afterthought, so this repo owns the rules for doing it without collisions: which slots exist, what `$DOTFILES_PRIVATE` links and in what order, and why reusing one of our tracked filenames is the wrong way to do it. Documented in README under "Extending and overriding". Describe the mechanism, never a particular extension.
+3. **Defining how to extend and override these settings is part of the job.** Overriding is a supported operation, not an afterthought, so this repo owns the rules for doing it without collisions: which slots exist, what stacking order means, and why reusing one of our tracked filenames is the wrong way to do it. Documented in README under "Extending and overriding". Describe the mechanism, never a particular extension.
+
+   The dependency runs **one way only**: something stacked on top may know about this repo, and this repo never knows about it. `etc/deploy` links exactly one tree — `--root` picks which — so composing several is the caller's job, and nothing here branches on whether an extension exists. Adding an env var, a recorded path, or a hook so that our scripts could go looking for one would invert that; don't.
 
 ## Setup
 
@@ -18,8 +20,9 @@ bash etc/install --profile server  # headless box: skip GUI casks (the profile i
 bash etc/deploy                    # detect OS, create symlinks (idempotent)
 bash etc/deploy --dry-run          # preview
 bash etc/undeploy                  # remove only symlinks pointing into this repo
-bash etc/overlay-init --create      # scaffold an overlay and record its path
-bash etc/overlay-check              # audit an overlay for collisions with our files
+bash etc/deploy --root <dir>        # deploy another tree with this layout (stacking = run again)
+bash etc/overlay-init --create      # scaffold a tree to stack, from templates/overlay
+bash etc/overlay-check <dir>        # audit one for collisions with our files
 ```
 
 Windows: `pwsh -File etc\install.ps1`, then `pwsh -File etc\deploy.ps1`.

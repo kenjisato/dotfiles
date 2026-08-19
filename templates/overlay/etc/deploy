@@ -1,16 +1,18 @@
 #!/usr/bin/env bash
 #
-# Deploy this overlay together with the base dotfiles.
+# Deploy this tree on top of the base dotfiles. This is the entry point: the base
+# repo never looks for a tree to stack, so composing the two is done here.
 #
-# Points $DOTFILES_PRIVATE at this directory and hands off to the base repo's
-# etc/deploy, which links the base tree first and this one on top. Every flag is
-# forwarded, so `bash etc/deploy --dry-run` previews both trees.
+# Order is the whole mechanism — the base tree is linked first, this one second,
+# and the later link replaces the earlier one wherever they share a destination.
 #
-# Set $DOTFILES if the base repo is not at ~/dotfiles.
+# Usage:
+#   bash etc/deploy [--dry-run]
+#   DOTFILES=~/src/dotfiles bash etc/deploy    # base repo elsewhere
 
 set -e
 
-OVERLAY="$(cd "$(dirname "$0")/.." && pwd)"
+HERE="$(cd "$(dirname "$0")/.." && pwd)"
 DOTFILES="${DOTFILES:-$HOME/dotfiles}"
 
 if [ ! -f "$DOTFILES/etc/deploy" ]; then
@@ -20,4 +22,14 @@ if [ ! -f "$DOTFILES/etc/deploy" ]; then
   exit 1
 fi
 
-exec env DOTFILES_PRIVATE="$OVERLAY" bash "$DOTFILES/etc/deploy" "$@"
+bash "$DOTFILES/etc/deploy" "$@"
+echo
+bash "$DOTFILES/etc/deploy" --root "$HERE" "$@"
+
+# Anything the base layout cannot express goes here, after both trees are linked.
+# Directories that mix config with runtime state are the usual reason: linking the
+# whole directory would put a tool's cache inside a git repo, so link the few
+# files instead. Leave this empty until you actually need it.
+#
+# DRY_RUN=0
+# for arg in "$@"; do case "$arg" in -n|--dry-run) DRY_RUN=1 ;; esac; done

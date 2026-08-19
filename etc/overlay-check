@@ -1,124 +1,82 @@
 #!/usr/bin/env bash
 #
-# Check an overlay against the rules deploy actually enforces.
+# Compare two dotfiles trees and report what stacking one on the other would do.
 #
-# Reports three things, none of which is visible by just looking at the trees:
-#   1. Collisions — an overlay file that lands on the same destination as one of
-#      ours. Deploy links the overlay last, so it wins and later fixes here stop
-#      reaching that machine. This is the one that matters.
-#   2. Files deploy will never link, because they sit outside the walked paths
-#      or in the wrong per-OS directory.
-#   3. Which of the documented extension slots the overlay fills.
+# Reports three things, none of them visible by just looking at the trees:
+#   1. Collisions — a file in the stacked tree that lands on the same
+#      destination as one of ours. Whichever tree is deployed last wins, so a
+#      collision means later fixes here stop reaching that machine. This is the
+#      one that matters.
+#   2. Files deploy would never link: outside the walked paths, or in the wrong
+#      per-OS directory.
+#   3. Which of the documented extension slots the stacked tree fills.
 #
 # Usage:
-#   bash etc/overlay-check [<overlay-dir>]   # defaults to the configured overlay
-#   bash etc/overlay-check --os linux        # check as a different host OS
+#   bash etc/overlay-check <dir>              # compare <dir> against this repo
+#   bash etc/overlay-check <dir> --os macos   # as a different host OS
+#   bash etc/overlay-check <dir> --base <dir> # compare two arbitrary trees
+#
+# Destinations come from `etc/deploy --root <tree> --dry-run`, so this never
+# reimplements the mapping and cannot drift from it.
 #
 # Exit status is 1 when a collision is found, so it can gate a commit.
 
 set -e
 
 DOTFILES="$(cd "$(dirname "$0")/.." && pwd)"
-OVERLAY_MARKER="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/overlay"
 
+BASE="$DOTFILES"
 OVERLAY=""
-FORCE_OS=""
+OS_ARGS=()
 while [ $# -gt 0 ]; do
   case "$1" in
-    --os)     FORCE_OS="$2"; shift 2 ;;
-    --os=*)   FORCE_OS="${1#*=}"; shift ;;
-    -h|--help) sed -n '3,19p' "$0" | sed 's/^# \?//'; exit 0 ;;
+    --os)     OS_ARGS=(--os "$2"); shift 2 ;;
+    --os=*)   OS_ARGS=(--os "${1#*=}"); shift ;;
+    --base)   BASE="$2"; shift 2 ;;
+    --base=*) BASE="${1#*=}"; shift ;;
+    -h|--help) sed -n '3,21p' "$0" | sed 's/^# \?//'; exit 0 ;;
     -*) echo "Unknown option: $1" >&2; exit 2 ;;
     *) OVERLAY="$1"; shift ;;
   esac
 done
 
-# Same resolution order as etc/deploy: explicit argument, then the environment,
-# then the recorded path.
 if [ -z "$OVERLAY" ]; then
-  if [ -n "${DOTFILES_PRIVATE:-}" ]; then
-    OVERLAY="$DOTFILES_PRIVATE"
-  elif [ -f "$OVERLAY_MARKER" ]; then
-    OVERLAY="$(sed -n '1p' "$OVERLAY_MARKER" | tr -d '\r')"
-  fi
-fi
-
-if [ -z "$OVERLAY" ]; then
-  echo "No overlay to check. Pass a directory, set \$DOTFILES_PRIVATE, or run" >&2
-  echo "  bash etc/overlay-init --create" >&2
+  echo "Usage: bash etc/overlay-check <dir>" >&2
+  echo "Nothing is configured anywhere — name the tree you want checked." >&2
+  echo "To make one first: bash etc/overlay-init --create" >&2
   exit 2
 fi
-if [ ! -d "$OVERLAY" ]; then
-  echo "Not a directory: $OVERLAY" >&2
-  exit 2
-fi
+for d in "$BASE" "$OVERLAY"; do
+  [ -d "$d" ] || { echo "Not a directory: $d" >&2; exit 2; }
+done
+BASE="$(cd "$BASE" && pwd)"
 OVERLAY="$(cd "$OVERLAY" && pwd)"
-
-if [ -n "$FORCE_OS" ]; then
-  OS="$FORCE_OS"
-else
-  case "$(uname)" in
-    Darwin) OS=macos ;;
-    Linux)  if grep -qiE 'microsoft|wsl' /proc/version 2>/dev/null; then OS=wsl; else OS=linux; fi ;;
-    *) echo "Unsupported OS: $(uname) — pass --os macos|linux|wsl" >&2; exit 2 ;;
-  esac
+if [ "$BASE" = "$OVERLAY" ]; then
+  echo "Both trees are $BASE — nothing to compare." >&2
+  exit 2
 fi
 
-echo "Base:     $DOTFILES"
-echo "Overlay:  $OVERLAY"
-echo "As OS:    $OS"
+echo "Base:     $BASE"
+echo "Stacked:  $OVERLAY"
 echo
-
-# Deploy skips these everywhere, so they are not destinations.
-ignored() {
-  case "$(basename "$1")" in
-    .DS_Store|.gitkeep) return 0 ;;
-    *.example|*.example.*) return 0 ;;
-  esac
-  return 1
-}
-
-# Emit "<destination>\t<source>" for every file a tree would deploy. Mirrors
-# deploy_tree in etc/deploy — keep the two in step.
-emit_map() {
-  local root="$1" d entry src rel
-  for d in "home/common" "home/$OS" "shell/zsh" "shell/bash" "shell/shared"; do
-    [ -d "$root/$d" ] || continue
-    shopt -s nullglob dotglob
-    for entry in "$root/$d"/*; do
-      ignored "$entry" || printf '%s\t%s\n' "$HOME/$(basename "$entry")" "$entry"
-    done
-    shopt -u nullglob dotglob
-  done
-  for d in "xdg-config/common" "xdg-config/$OS"; do
-    [ -d "$root/$d" ] || continue
-    while IFS= read -r -d '' src; do
-      ignored "$src" && continue
-      rel="${src#$root/$d/}"
-      printf '%s\t%s\n' "$HOME/.config/$rel" "$src"
-    done < <(find "$root/$d" -type f -print0)
-  done
-  for d in "bin/common" "bin/$OS"; do
-    [ -d "$root/$d" ] || continue
-    shopt -s nullglob dotglob
-    for entry in "$root/$d"/*; do
-      ignored "$entry" || printf '%s\t%s\n' "$HOME/bin/$(basename "$entry")" "$entry"
-    done
-    shopt -u nullglob dotglob
-  done
-}
 
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
-emit_map "$DOTFILES" | sort > "$TMP/base"
-emit_map "$OVERLAY"  | sort > "$TMP/over"
 
-rel_to() { printf '%s' "${1#$2/}"; }
+# "would link: <dst> -> <src>" is deploy's own dry-run output, which is why this
+# script needs no copy of the layout rules.
+emit_map() {
+  bash "$DOTFILES/etc/deploy" --root "$1" --dry-run "${OS_ARGS[@]}" \
+    | sed -n 's/^would link: \(.*\) -> \(.*\)$/\1\t\2/p'
+}
+emit_map "$BASE"    | sort > "$TMP/base"
+emit_map "$OVERLAY" | sort > "$TMP/over"
+
 tilde() { printf '%s' "$1" | sed "s|^$HOME|~|"; }
+rel_to() { printf '%s' "${1#$2/}"; }
 
-# A destination may be a directory (link_children links whole subdirectories such
-# as .shell.local), in which case everything under it is deployed too. Treat a
-# file as reachable when it is, or lives under, an emitted source.
+# A destination can be a directory (whole subdirectories such as .shell.local are
+# linked as one entry), so anything beneath an emitted source is deployed too.
 reachable() {
   local file="$1" src
   while IFS=$'\t' read -r _ src; do
@@ -136,34 +94,36 @@ while IFS=$'\t' read -r dest src; do
   base_src="$(awk -F'\t' -v d="$dest" '$1==d {print $2; exit}' "$TMP/base")"
   if [ -n "$base_src" ]; then
     if [ "$collisions" -eq 0 ]; then
-      echo "$(tput setaf 1 2>/dev/null)Collisions — the overlay replaces a tracked file:$(tput sgr0 2>/dev/null)"
+      echo "$(tput setaf 1 2>/dev/null)Collisions — deployed last, these replace a file from the base tree:$(tput sgr0 2>/dev/null)"
     fi
     collisions=$((collisions + 1))
     echo "  $(tilde "$dest")"
-    echo "      ours:    $(rel_to "$base_src" "$DOTFILES")"
-    echo "      theirs:  $(rel_to "$src" "$OVERLAY")   <- wins"
+    echo "      base:     $(rel_to "$base_src" "$BASE")"
+    echo "      stacked:  $(rel_to "$src" "$OVERLAY")   <- wins"
   fi
 done < "$TMP/over"
 
 if [ "$collisions" -gt 0 ]; then
   echo
-  echo "  Rename the overlay file to something this repo does not track, or move the"
-  echo "  setting into one of the extension slots below. Otherwise improvements to"
-  echo "  our file stop reaching any machine using this overlay."
+  echo "  Rename yours to something the base tree does not track, or move the setting"
+  echo "  into one of the extension slots below. Otherwise improvements to the base"
+  echo "  file stop reaching any machine using this tree."
   echo
 fi
 
 # ---- 2. files that will never be linked --------------------------------------
 unreachable=0
 while IFS= read -r -d '' src; do
-  ignored "$src" && continue
   rel="$(rel_to "$src" "$OVERLAY")"
   case "$rel" in
-    .git/*|README.md|.gitignore|etc/*|pkg/*|docs/*) continue ;;
+    .git/*|.gitignore|README.md|etc/*|pkg/*|docs/*|templates/*) continue ;;
+  esac
+  case "$(basename "$src")" in
+    .DS_Store|.gitkeep|*.example|*.example.*) continue ;;
   esac
   if ! reachable "$src"; then
     if [ "$unreachable" -eq 0 ]; then
-      echo "$(tput setaf 3 2>/dev/null)Never linked on $OS — outside the walked paths, or the wrong OS directory:$(tput sgr0 2>/dev/null)"
+      echo "$(tput setaf 3 2>/dev/null)Never linked here — outside the walked paths, or the wrong OS directory:$(tput sgr0 2>/dev/null)"
     fi
     unreachable=$((unreachable + 1))
     echo "  $rel"
@@ -171,7 +131,7 @@ while IFS= read -r -d '' src; do
 done < <(find "$OVERLAY" -type f -not -path "$OVERLAY/.git/*" -print0)
 [ "$unreachable" -gt 0 ] && echo
 
-# ---- 3. slots the overlay fills ---------------------------------------------
+# ---- 3. slots the stacked tree fills ----------------------------------------
 echo "Extension slots:"
 for slot in \
   "$HOME/.config/git/config.local" \
@@ -185,8 +145,7 @@ for slot in \
 done
 
 echo
-linked=$(wc -l < "$TMP/over" | tr -d ' ')
-echo "$linked destination(s) would be linked from the overlay."
+echo "$(wc -l < "$TMP/over" | tr -d ' ') destination(s) would be linked from the stacked tree."
 if [ "$collisions" -gt 0 ]; then
   echo "$(tput setaf 1 2>/dev/null)$collisions collision(s).$(tput sgr0 2>/dev/null)"
   exit 1

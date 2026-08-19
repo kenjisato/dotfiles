@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+#
+# Provision a machine: the base tools first, then whatever only this tree needs.
+# This is the entry point, so a new machine takes one command, not two in an
+# order you have to remember.
+#
+# Usage:
+#   bash etc/install [--profile server] [--no-base]
+#   DOTFILES=~/src/dotfiles bash etc/install
+#
+# Every argument is forwarded to the base installer, so --profile and friends
+# work exactly as they do there. --no-base skips it, for when you are only
+# re-running the part below.
+
+set -e
+
+HERE="$(cd "$(dirname "$0")/.." && pwd)"
+DOTFILES="${DOTFILES:-$HOME/dotfiles}"
+
+RUN_BASE=1
+ARGS=()
+for arg in "$@"; do
+  case "$arg" in
+    --no-base) RUN_BASE=0 ;;
+    *) ARGS+=("$arg") ;;
+  esac
+done
+
+if [ "$RUN_BASE" -eq 1 ]; then
+  if [ ! -f "$DOTFILES/etc/install" ]; then
+    echo "Base dotfiles not found at $DOTFILES — set \$DOTFILES." >&2
+    exit 1
+  fi
+  echo "=== base installer ==="
+  bash "$DOTFILES/etc/install" "${ARGS[@]}"
+  echo
+fi
+
+echo "=== this tree ==="
+# Your own packages go here. The host profile the base installer resolved is in
+# ~/.config/dotfiles/host-profile — read it rather than asking again, so both
+# halves always agree.
+PROFILE_MARKER="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/host-profile"
+HOST_PROFILE=desktop
+[ -f "$PROFILE_MARKER" ] && HOST_PROFILE="$(tr -d '[:space:]' < "$PROFILE_MARKER")"
+[ -n "$HOST_PROFILE" ] || HOST_PROFILE=desktop
+echo "Host profile: $HOST_PROFILE"
+
+# if [ -f "$HERE/pkg/Brewfile" ]; then
+#   HOMEBREW_DOTFILES_HOST_PROFILE="$HOST_PROFILE" brew bundle --file="$HERE/pkg/Brewfile"
+# fi
+
+echo "Nothing to install yet — add your own steps to etc/install."

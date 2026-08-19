@@ -139,45 +139,52 @@ out of the tracked rc files, which are symlinks into this repo.
 
 ### Deploying a set of them together
 
-To keep those files in one directory — versioned, carried across machines — tell
-this repo about it once, and `etc/deploy` links them alongside its own from then
-on:
+To keep those files in one directory — versioned, carried across machines — put
+them in a tree with the same layout as this one and deploy it *after* this repo:
 
 ```bash
-bash etc/overlay-init --create               # scaffold one from templates/overlay
-bash etc/overlay-init ~/path/to/existing     # adopt a directory you already have
-bash etc/overlay-init --clone owner/repo     # clone a remote first (uses ghq when installed)
-bash etc/overlay-init                        # show what's configured
-bash etc/overlay-init --forget               # stop using it (deletes nothing)
+bash etc/deploy                    # this repo
+bash etc/deploy --root <your-dir>  # your tree, on top
 ```
 
-`--clone` also takes a full git URL, and `--path <dir>` picks the clone
-destination. Adopting or cloning runs the collision check below straight away.
+That is the entire mechanism. `etc/deploy` links exactly one tree, so stacking is
+just running it again in the order you want: the second run replaces the first
+one's symlinks wherever they share a destination. Nothing is configured, nothing
+is remembered, and **this repo never goes looking for a tree to stack** — which
+also means it can never silently half-apply one.
 
-The path is recorded in `~/.config/dotfiles/overlay`, so plain `bash etc/deploy`
-picks it up with no environment variable. `$DOTFILES_PRIVATE` overrides the
-record for one run, and a recorded path that has gone missing produces a warning
-rather than a silent skip:
+So put the two commands in a script on your side and use *that* as your entry
+point. `etc/overlay-init --create` scaffolds a tree that already contains one,
+along with a matching `etc/install` and `etc/undeploy`:
 
 ```bash
-DOTFILES_PRIVATE=/some/other/dir bash etc/deploy   # one-off, ignores the record
+bash etc/overlay-init --create [<dir>]      # scaffold from templates/overlay
+bash etc/overlay-init --clone owner/repo    # or clone a remote (uses ghq when installed)
 ```
 
-`templates/overlay/` also ships an `etc/deploy` shim, so running `bash etc/deploy`
-from *inside* an overlay made this way deploys both trees without configuring
-anything at all.
+`--clone` also takes a full git URL, and `--path <dir>` picks the destination.
+Already have a directory? Nothing to set up — copy the shims out of
+`templates/overlay/etc/` and run the check below.
 
-The same tree walk runs against the overlay *after* this repo, so its files win
-wherever they share a destination path. `$DOTFILES` overrides the location of
-this repo if it isn't at `~/dotfiles` (`$HOME\dotfiles` on Windows), and
-`etc/undeploy` removes symlinks pointing into either directory.
+From then on the work happens on your side, and this repo can stay untouched:
+
+```bash
+cd <your-dir>
+bash etc/install     # base installer, then your packages
+bash etc/deploy      # both trees, in order
+bash etc/undeploy    # symlinks from both trees
+```
+
+`$DOTFILES` tells those shims where this repo lives if it isn't at `~/dotfiles`
+(`$HOME\dotfiles` on Windows). Cleaning up from this side instead takes
+`bash etc/undeploy --also <your-dir>`, since undeploy only removes links into
+trees it is given.
 
 ### Rules for an extension that won't collide
 
 ```bash
-bash etc/overlay-check              # audit the configured overlay
-bash etc/overlay-check <dir>        # audit any directory
-bash etc/overlay-check --os macos   # audit as a different host OS
+bash etc/overlay-check <dir>               # audit a tree against this one
+bash etc/overlay-check <dir> --os macos    # audit as a different host OS
 ```
 
 It lists any file of yours that would replace one of ours, any file deploy would

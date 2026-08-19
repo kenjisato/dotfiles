@@ -18,29 +18,32 @@
 # Developer Mode enabled (Settings -> For developers -> Developer Mode = ON).
 #
 # Usage:
-#   pwsh -File etc/deploy.ps1              # apply
-#   pwsh -File etc/deploy.ps1 -DryRun      # preview only
+#   pwsh -File etc/deploy.ps1                    # deploy this repo
+#   pwsh -File etc/deploy.ps1 -Root <dir>        # deploy another tree, same layout
+#   pwsh -File etc/deploy.ps1 -DryRun            # preview only
+#
+# -Root is how layering works, and it is all this script knows about it: run it
+# once per tree, in the order you want, and the later run wins. This script has
+# no notion of an "overlay" and never looks for one.
 
 [CmdletBinding()]
 param(
-    [switch]$DryRun
+    [switch]$DryRun,
+    [string]$Root
 )
 
 $ErrorActionPreference = 'Stop'
 
 $Dotfiles = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 
-$Private = $null
-if ($Env:DOTFILES_PRIVATE -and (Test-Path $Env:DOTFILES_PRIVATE)) {
-    $Private = $Env:DOTFILES_PRIVATE
+if ($Root) {
+    if (-not (Test-Path $Root)) { throw "Not a directory: $Root" }
+    $Tree = (Resolve-Path $Root).Path
+} else {
+    $Tree = $Dotfiles
 }
 
-Write-Host "Source:  $Dotfiles"
-if ($Private) {
-    Write-Host "Overlay: $Private"
-} else {
-    Write-Host "Overlay: (none — set $Env:DOTFILES_PRIVATE to add one)"
-}
+Write-Host "Tree:    $Tree"
 if ($DryRun) { Write-Host "(dry-run — no changes will be made)" -ForegroundColor Yellow }
 Write-Host ""
 
@@ -107,33 +110,26 @@ function New-DotfileLink {
 }
 
 function Invoke-DeployTree {
-    param([string]$Root)
+    param([string]$TreeRoot)
 
     # PowerShell profile -> $PROFILE
-    New-DotfileLink (Join-Path $Root 'xdg-config\windows\powershell\Microsoft.PowerShell_profile.ps1') $PROFILE
+    New-DotfileLink (Join-Path $TreeRoot 'xdg-config\windows\powershell\Microsoft.PowerShell_profile.ps1') $PROFILE
 
     # home/common/* -> $HOME (the genuinely cross-platform dotfiles)
-    New-DotfileLink (Join-Path $Root 'home\common\.vimrc') (Join-Path $HOME '.vimrc')
-    New-DotfileLink (Join-Path $Root 'home\common\.vim')   (Join-Path $HOME '.vim')
+    New-DotfileLink (Join-Path $TreeRoot 'home\common\.vimrc') (Join-Path $HOME '.vimrc')
+    New-DotfileLink (Join-Path $TreeRoot 'home\common\.vim')   (Join-Path $HOME '.vim')
 
     # home/windows/* -> $HOME (Windows-only dotfiles, e.g. psmux config)
-    New-DotfileLink (Join-Path $Root 'home\windows\.psmux.conf') (Join-Path $HOME '.psmux.conf')
+    New-DotfileLink (Join-Path $TreeRoot 'home\windows\.psmux.conf') (Join-Path $HOME '.psmux.conf')
 
     # Global git hooks — same path as the bash deploy's xdg-config/common
     # recursion produces on macOS/Linux. The bash hook script works under
     # git-for-windows' MSYS shell.
-    New-DotfileLink (Join-Path $Root 'xdg-config\common\git\hooks\pre-commit') `
+    New-DotfileLink (Join-Path $TreeRoot 'xdg-config\common\git\hooks\pre-commit') `
                     (Join-Path $HOME '.config\git\hooks\pre-commit')
 }
 
-Write-Host "--- base ---"
-Invoke-DeployTree $Dotfiles
-
-if ($Private) {
-    Write-Host ""
-    Write-Host "--- overlay ---"
-    Invoke-DeployTree $Private
-}
+Invoke-DeployTree $Tree
 
 if ($script:Skipped.Count -gt 0) {
     Write-Host ""

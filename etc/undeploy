@@ -1,55 +1,52 @@
 #!/usr/bin/env bash
 #
-# Undeploy dotfiles — remove symlinks in $HOME that point into this
-# repo (and into the overlay directory, if $DOTFILES_PRIVATE is set).
+# Undeploy dotfiles — remove symlinks in $HOME that point into the given trees.
 #
 # Scans $HOME (top-level), $HOME/.config (recursive), and $HOME/bin
-# (top-level) for symlinks whose target resolves into a managed directory.
+# (top-level) for symlinks whose target resolves into one of them.
 # Regular files are never touched.
 #
 # Usage:
-#   bash etc/undeploy [--dry-run]
+#   bash etc/undeploy                     # this repo only
+#   bash etc/undeploy <dir> [<dir>...]    # these trees instead
+#   bash etc/undeploy --also <dir>        # this repo plus another tree
+#   bash etc/undeploy --dry-run
+#
+# Naming the trees is the caller's job: this script has no notion of an
+# "overlay" and never goes looking for one. Something that stacked another tree
+# on top of this repo is what knows to pass it here as well.
 
 set -e
 
 DOTFILES="$(cd "$(dirname "$0")/.." && pwd)"
 
 DRY_RUN=0
+ROOTS=()
 for arg in "$@"; do
   case "$arg" in
     -n|--dry-run) DRY_RUN=1 ;;
     -h|--help)
       sed -n '3,13p' "$0" | sed 's/^# \?//'
       exit 0 ;;
-    *) echo "Unknown option: $arg" >&2; exit 1 ;;
+    --also) ALSO_NEXT=1 ;;
+    -*) echo "Unknown option: $arg" >&2; exit 1 ;;
+    *) if [ ! -d "$arg" ]; then echo "Not a directory: $arg" >&2; exit 1; fi
+       ROOTS+=("$(cd "$arg" && pwd)") ;;
   esac
 done
 
-OVERLAY_MARKER="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/overlay"
-
-# Overlay path: $DOTFILES_PRIVATE wins, then whatever etc/overlay-init recorded.
-# A configured-but-missing path warns rather than being silently ignored — a
-# silent skip here reads exactly like "the overlay has nothing for this host".
-PRIVATE=""
-if [ -n "${DOTFILES_PRIVATE:-}" ]; then
-  PRIVATE="$DOTFILES_PRIVATE"
-  PRIVATE_FROM="\$DOTFILES_PRIVATE"
-elif [ -f "$OVERLAY_MARKER" ]; then
-  PRIVATE="$(sed -n '1p' "$OVERLAY_MARKER" | tr -d '\r')"
-  PRIVATE_FROM="recorded"
-fi
-if [ -n "$PRIVATE" ] && [ ! -d "$PRIVATE" ]; then
-  echo "warning: overlay $PRIVATE ($PRIVATE_FROM) does not exist — ignoring." >&2
-  echo "         fix it with 'bash etc/overlay-init <dir>' or 'bash etc/overlay-init --forget'." >&2
-  PRIVATE=""
+# No trees named, or only --also given: this repo is the default.
+if [ "${#ROOTS[@]}" -eq 0 ] || [ "${ALSO_NEXT:-0}" = 1 ]; then
+  ROOTS=("$DOTFILES" "${ROOTS[@]}")
 fi
 
-echo "Source:       $DOTFILES"
-[ -n "$PRIVATE" ] && echo "Overlay:      $PRIVATE ($PRIVATE_FROM)" || echo "Overlay:      (none — see etc/overlay-init)"
+for root in "${ROOTS[@]}"; do
+  echo "Tree:         $root"
+done
 [ $DRY_RUN -eq 1 ] && echo "(dry-run — no changes will be made)"
 echo
 
-# Check whether a symlink's target lives inside one of the repos.
+# Check whether a symlink's target lives inside one of the trees we were given.
 points_to_repo() {
   local link="$1"
   local target
@@ -60,14 +57,12 @@ points_to_repo() {
     target="$(cd "$(dirname "$link")" && cd "$(dirname "$target")" && pwd)/$(basename "$target")"
   fi
 
-  case "$target" in
-    "$DOTFILES"/*) return 0 ;;
-  esac
-  if [ -n "$PRIVATE" ]; then
+  local root
+  for root in "${ROOTS[@]}"; do
     case "$target" in
-      "$PRIVATE"/*) return 0 ;;
+      "$root"/*) return 0 ;;
     esac
-  fi
+  done
   return 1
 }
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
-# Symlink dotfiles into $HOME based on the detected OS.
+# Symlink one tree of dotfiles into $HOME, based on the detected OS.
 #
-# Layout (under $DOTFILES):
+# Layout (under the tree being deployed):
 #   home/{common,$OS}/*        -> $HOME/*                 (per top-level entry)
 #   shell/{zsh,bash,shared}/*  -> $HOME/*                 (per top-level entry)
 #   xdg-config/{common,$OS}/   -> $HOME/.config/...       (per FILE, preserving subdirs)
@@ -11,61 +11,68 @@
 # $OS is one of: macos, linux, wsl
 # Windows: use etc/deploy.ps1 (planned).
 #
-# Overlay (optional): if $DOTFILES_PRIVATE names a directory that mirrors the
-# layout above, the same linking runs against it after this repo, so an overlay
-# file wins wherever it shares a destination path. Nothing here requires an
-# extension to exist; README's "Extending and overriding" has the slots and the
-# rules for adding a set of files without colliding with these.
+# Usage:
+#   bash etc/deploy                 # deploy this repo
+#   bash etc/deploy --root <dir>    # deploy another tree with the same layout
+#   bash etc/deploy --dry-run       # preview
+#   bash etc/deploy --os macos      # link a different OS's subtree
+#
+# --root is how layering works, and it is all this script knows about it: run it
+# once per tree, in the order you want, and the later run wins because linking
+# replaces an existing symlink. This script has no notion of an "overlay" and
+# never looks for one — deciding what to stack, and in what order, belongs to
+# whoever is composing. README's "Extending and overriding" describes the
+# contract a stacked tree is expected to honour.
 
 set -e
 
 DOTFILES="$(cd "$(dirname "$0")/.." && pwd)"
 
 DRY_RUN=0
-for arg in "$@"; do
-  case "$arg" in
-    -n|--dry-run) DRY_RUN=1 ;;
+ROOT=""
+FORCE_OS=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -n|--dry-run) DRY_RUN=1; shift ;;
+    --root)   ROOT="$2"; shift 2 ;;
+    --root=*) ROOT="${1#*=}"; shift ;;
+    --os)     FORCE_OS="$2"; shift 2 ;;
+    --os=*)   FORCE_OS="${1#*=}"; shift ;;
     -h|--help)
-      sed -n '3,18p' "$0" | sed 's/^# \?//'
+      sed -n '3,25p' "$0" | sed 's/^# \?//'
       exit 0 ;;
-    *) echo "Unknown option: $arg" >&2; exit 1 ;;
+    *) echo "Unknown option: $1" >&2; exit 1 ;;
   esac
 done
 
-case "$(uname)" in
-  Darwin) OS=macos ;;
-  Linux)
-    if grep -qiE 'microsoft|wsl' /proc/version 2>/dev/null; then
-      OS=wsl
-    else
-      OS=linux
-    fi
-    ;;
-  *) echo "Unsupported OS: $(uname)" >&2; exit 1 ;;
-esac
-
-OVERLAY_MARKER="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/overlay"
-
-# Overlay path: $DOTFILES_PRIVATE wins, then whatever etc/overlay-init recorded.
-# A configured-but-missing path warns rather than being silently ignored — a
-# silent skip here reads exactly like "the overlay has nothing for this host".
-PRIVATE=""
-if [ -n "${DOTFILES_PRIVATE:-}" ]; then
-  PRIVATE="$DOTFILES_PRIVATE"
-  PRIVATE_FROM="\$DOTFILES_PRIVATE"
-elif [ -f "$OVERLAY_MARKER" ]; then
-  PRIVATE="$(sed -n '1p' "$OVERLAY_MARKER" | tr -d '\r')"
-  PRIVATE_FROM="recorded"
+if [ -n "$ROOT" ]; then
+  [ -d "$ROOT" ] || { echo "Not a directory: $ROOT" >&2; exit 1; }
+  ROOT="$(cd "$ROOT" && pwd)"
+else
+  ROOT="$DOTFILES"
 fi
-if [ -n "$PRIVATE" ] && [ ! -d "$PRIVATE" ]; then
-  echo "warning: overlay $PRIVATE ($PRIVATE_FROM) does not exist — ignoring." >&2
-  echo "         fix it with 'bash etc/overlay-init <dir>' or 'bash etc/overlay-init --forget'." >&2
-  PRIVATE=""
+
+if [ -n "$FORCE_OS" ]; then
+  case "$FORCE_OS" in
+    macos|linux|wsl) OS="$FORCE_OS" ;;
+    *) echo "--os expects macos, linux or wsl" >&2; exit 1 ;;
+  esac
+else
+  case "$(uname)" in
+    Darwin) OS=macos ;;
+    Linux)
+      if grep -qiE 'microsoft|wsl' /proc/version 2>/dev/null; then
+        OS=wsl
+      else
+        OS=linux
+      fi
+      ;;
+    *) echo "Unsupported OS: $(uname)" >&2; exit 1 ;;
+  esac
 fi
 
 echo "Detected OS:  $OS"
-echo "Source:       $DOTFILES"
-[ -n "$PRIVATE" ] && echo "Overlay:      $PRIVATE ($PRIVATE_FROM)" || echo "Overlay:      (none — see etc/overlay-init)"
+echo "Tree:         $ROOT"
 [ $DRY_RUN -eq 1 ] && echo "(dry-run — no changes will be made)"
 echo
 
@@ -94,7 +101,8 @@ EOF
   fi
 done
 
-mkdir -p "$HOME/.config" "$HOME/bin"
+# Not under --dry-run: a preview must not touch the filesystem.
+[ $DRY_RUN -eq 0 ] && mkdir -p "$HOME/.config" "$HOME/bin"
 
 SKIPPED=()
 
@@ -195,14 +203,7 @@ EOF
 }
 ensure_gitconfig
 
-echo "--- base ---"
-deploy_tree "$DOTFILES"
-
-if [ -n "$PRIVATE" ]; then
-  echo
-  echo "--- overlay ---"
-  deploy_tree "$PRIVATE"
-fi
+deploy_tree "$ROOT"
 
 if [ ${#SKIPPED[@]} -gt 0 ]; then
   echo

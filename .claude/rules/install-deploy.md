@@ -45,17 +45,21 @@ README runs `gh auth login` *after* the installer, so on a genuinely first run g
 - `.DS_Store`, `.gitkeep`, and `*.example` files are ignored — so a `*.example` file is documentation only and is **never** deployed. Nothing else creates the real file for it.
 - It creates `~/.gitconfig` when absent, **before** linking anything. See `git-config.md`; do not remove this.
 - It refuses to run if `~/.config` is itself a symlink (the legacy whole-directory layout) and prints migration instructions.
-- The overlay path comes from `$DOTFILES_PRIVATE`, else from `~/.config/dotfiles/overlay` as recorded by `etc/overlay-init`. A path that is configured but missing **warns** — never silently skips, because a silent skip is indistinguishable from "the overlay has nothing for this host". The same `deploy_tree` function then runs against it *after* this repo, so an overlay file at the same destination path **replaces** ours rather than merging with it — which also means later improvements here never reach that machine. Document the `*.local` extension slots instead of inviting overlays to shadow tracked files. Nothing in this repo may name, assume, or depend on a particular overlay.
+- It deploys **one** tree: this repo, or whatever `--root` names. Stacking is achieved by running it once per tree in the desired order — the later run wins, because `ln -snfv` replaces an existing symlink (a real file is still skipped). Verified across separate invocations, so the caller genuinely controls precedence.
+- There is deliberately **no** `$DOTFILES_PRIVATE`, recorded path, or post-deploy hook. Any of those would make this script branch on whether an extension exists, inverting the one-way dependency. Composition belongs to whoever is stacking; `templates/overlay/etc/deploy` shows the shape.
+- `--os macos|linux|wsl` overrides detection. Mainly for previewing another host's result with `--dry-run`, which is also how `etc/overlay-check` gets its destination map.
 
-`etc/undeploy` walks `$HOME` and removes only symlinks whose target resolves into this repo (or the `$DOTFILES_PRIVATE` directory, when set); regular files are never touched.
+`etc/undeploy` walks `$HOME` and removes only symlinks whose target resolves into a tree it was **given**: this repo by default, `<dir>...` to replace that list, `--also <dir>` to add to it. Regular files are never touched. Anything that stacks a tree has to pass it here too, or it leaves its own links behind.
 
 ## Overlay tooling
 
-`etc/overlay-init` creates (`--create`, from `templates/overlay/`), adopts (`<dir>`), or clones (`--clone owner/repo|url`, via `ghq` when present) an overlay and records the path; `--forget` drops the record without deleting anything. `etc/overlay-check` audits one: collisions against our tracked destinations, files deploy would never link, and which extension slots are filled. It exits 1 on a collision so it can gate a commit.
+`etc/overlay-init` only *obtains* a tree — `--create` from `templates/overlay/`, or `--clone owner/repo|url` (via `ghq` when present). It records nothing, because nothing here reads a recorded path. `etc/overlay-check <dir>` audits one: collisions against our destinations, files deploy would never link, and which extension slots are filled. It exits 1 on a collision so it can gate a commit.
 
-`overlay-check` re-derives the destination map itself rather than calling deploy, so its `emit_map` **must be kept in step with `deploy_tree`**. If you add a directory to the walk in `etc/deploy`, add it there too or the checker will silently under-report. The `*.example` / `.gitkeep` / `.DS_Store` exclusions are duplicated for the same reason.
+`overlay-check` gets its destination map by parsing `etc/deploy --root <tree> --dry-run` output (`would link: <dst> -> <src>`) rather than reimplementing the layout, so it cannot drift from deploy. Keep that output format stable, or fix the `sed` in the checker with it.
 
 A destination can be a *directory* (`link_children` links `.shell.local` whole), so the checker treats anything beneath an emitted source as reachable — otherwise every file inside such a directory gets misreported as never linked.
+
+`--dry-run` must stay side-effect free; it used to `mkdir -p ~/.config ~/bin` unconditionally, which made the checker's preview runs write to disk.
 
 ## Windows
 

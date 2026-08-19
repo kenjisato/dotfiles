@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+#
+# Remove the symlinks both trees created. The base undeploy only cleans the trees
+# it is told about, so name this one too.
+#
+# Usage:
+#   bash etc/undeploy [--dry-run]
+
+set -e
+
+HERE="$(cd "$(dirname "$0")/.." && pwd)"
+DOTFILES="${DOTFILES:-$HOME/dotfiles}"
+
+if [ ! -f "$DOTFILES/etc/undeploy" ]; then
+  echo "Base dotfiles not found at $DOTFILES — set \$DOTFILES." >&2
+  exit 1
+fi
+
+bash "$DOTFILES/etc/undeploy" --also "$HERE" "$@"
+
+# If etc/deploy links anything by hand, remove it here too — otherwise deploy
+# creates links that undeploy leaves behind.
