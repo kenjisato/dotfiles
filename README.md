@@ -91,10 +91,10 @@ Parallels VMs (detected via WMI Manufacturer = Parallels); override with
   preserved; the original is backed up first)
 
 The Windows deploy is intentionally narrower than the bash side — it links the
-PowerShell profile (to `$PROFILE`), `.vimrc`, `.vim/`, `.psmux.conf`, and the git
-config, ignore file and pre-commit hook under `~/.config/git/`. Apps without a
-clean Windows XDG story (gh, rstudio, …) are skipped, and so is `.tmux.conf`:
-native Windows has no tmux, and WSL has its own filesystem.
+PowerShell profile (to `$PROFILE`), `.psmux.conf`, `starship.toml`, the lazygit
+config, and the git config, ignore file and pre-commit hook under `~/.config/git/`.
+Apps without a clean Windows XDG story (gh, rstudio, …) are skipped, and so is
+`.tmux.conf`: native Windows has no tmux, and WSL has its own filesystem.
 
 git is deliberately not on that skipped list: git-for-windows reads
 `~/.config/git/config` like every other platform, so delta, the difftastic
@@ -171,6 +171,13 @@ untracked locations. Fill in whichever you need; nothing else has to change:
 A missing slot is a silent no-op, so leaving all of them empty is a supported
 configuration — and putting installer-managed junk in `~/.shell.local/` keeps it
 out of the tracked rc files, which are symlinks into this repo.
+
+On Windows a stacked tree can fill three of them — `~/.config/git/config.local`,
+`~/.config/lazygit/config.local.yml`, and `profile.local.ps1` beside `$PROFILE`.
+`~/.shell.local/` and the `cdb` bookmarks stay Unix-only, since no shell rc is
+deployed there. `~/.gitconfig` is never linked on any platform: `etc/deploy` and
+`etc/deploy.ps1` create it as a real file so `git config --global` can never
+write through a symlink into a repo.
 
 ### Deploying a set of them together
 

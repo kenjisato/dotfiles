@@ -3,14 +3,20 @@
 # Symlinks the Windows-relevant subset of the dotfiles tree:
 #
 #   xdg-config/windows/powershell/Microsoft.PowerShell_profile.ps1  ->  $PROFILE
-#   home/common/.vimrc                                              ->  $HOME/.vimrc
-#   home/common/.vim/                                               ->  $HOME/.vim/
 #   home/windows/.psmux.conf                                        ->  $HOME/.psmux.conf
 #   xdg-config/common/starship.toml                                 ->  $HOME/.config/starship.toml
 #   xdg-config/common/lazygit/config.yml                            ->  $HOME/.config/lazygit/config.yml
 #   xdg-config/common/git/config                                    ->  $HOME/.config/git/config
 #   xdg-config/common/git/ignore                                    ->  $HOME/.config/git/ignore
 #   xdg-config/common/git/hooks/pre-commit                          ->  $HOME/.config/git/hooks/
+#
+# And, only when the tree being deployed actually carries them, the extension
+# slots a stacked tree is expected to fill (the base repo tracks none of these,
+# so for it every line is a no-op):
+#
+#   xdg-config/common/git/config.local                              ->  $HOME/.config/git/config.local
+#   xdg-config/common/lazygit/config.local.yml                      ->  $HOME/.config/lazygit/config.local.yml
+#   xdg-config/windows/powershell/profile.local.ps1                 ->  next to $PROFILE
 #
 # The PowerShell deploy is intentionally narrower than the bash side — apps
 # without a clean Windows XDG story (gh, rstudio, ...) are skipped. .tmux.conf
@@ -127,9 +133,10 @@ function Invoke-DeployTree {
     # PowerShell profile -> $PROFILE
     New-DotfileLink (Join-Path $TreeRoot 'xdg-config\windows\powershell\Microsoft.PowerShell_profile.ps1') $PROFILE
 
-    # home/common/* -> $HOME (the genuinely cross-platform dotfiles)
-    New-DotfileLink (Join-Path $TreeRoot 'home\common\.vimrc') (Join-Path $HOME '.vimrc')
-    New-DotfileLink (Join-Path $TreeRoot 'home\common\.vim')   (Join-Path $HOME '.vim')
+    # Nothing from home/common is linked here. It holds .Rprofile, .rsyncignore
+    # and .tmux.conf, none of which has a Windows runtime this deploy can assume;
+    # .vimrc and .vim/ used to be linked from here and were dead lines from the
+    # commit that switched this repo to neovim, since the files went with it.
 
     # home/windows/* -> $HOME (Windows-only dotfiles, e.g. psmux config)
     New-DotfileLink (Join-Path $TreeRoot 'home\windows\.psmux.conf') (Join-Path $HOME '.psmux.conf')
@@ -156,6 +163,23 @@ function Invoke-DeployTree {
                     (Join-Path $HOME '.config\git\ignore')
     New-DotfileLink (Join-Path $TreeRoot 'xdg-config\common\git\hooks\pre-commit') `
                     (Join-Path $HOME '.config\git\hooks\pre-commit')
+
+    # Extension slots. The base repo tracks none of these, and New-DotfileLink
+    # returns early on a missing source, so each line does nothing until a
+    # stacked tree deployed with -Root supplies the file. Without them the slots
+    # documented in README were Unix-only in practice: the bash deploy walks
+    # xdg-config/ per file and picks them up, this script links a fixed list.
+    #
+    # Nothing writes to any of these three, which is what makes linking them into
+    # a repo safe — unlike ~/.gitconfig, the file `git config --global` edits.
+    New-DotfileLink (Join-Path $TreeRoot 'xdg-config\common\git\config.local') `
+                    (Join-Path $HOME '.config\git\config.local')
+    New-DotfileLink (Join-Path $TreeRoot 'xdg-config\common\lazygit\config.local.yml') `
+                    (Join-Path $HOME '.config\lazygit\config.local.yml')
+    # Dot-sourced by the deployed profile from its own directory, so it has to
+    # land beside $PROFILE rather than under ~/.config.
+    New-DotfileLink (Join-Path $TreeRoot 'xdg-config\windows\powershell\profile.local.ps1') `
+                    (Join-Path (Split-Path $PROFILE) 'profile.local.ps1')
 }
 
 # Guard the ~/.gitconfig invariant before linking anything — the same rule the

@@ -63,7 +63,11 @@ A destination can be a *directory* (`link_children` links `.shell.local` whole),
 
 ## Windows
 
-The Windows deploy is intentionally narrow: the PowerShell profile, cross-platform dotfiles that have a Windows runtime (`.vimrc`, `.vim/`), `.psmux.conf`, and the three git files under `~/.config/git/` (`config`, `ignore`, `hooks/pre-commit`). `.tmux.conf` is excluded (no native tmux; WSL has its own filesystem), and apps without a clean Windows XDG story (gh, rstudio) are skipped.
+The Windows deploy is intentionally narrow: the PowerShell profile, `.psmux.conf`, `starship.toml`, `lazygit/config.yml`, and the three git files under `~/.config/git/` (`config`, `ignore`, `hooks/pre-commit`). `.tmux.conf` is excluded (no native tmux; WSL has its own filesystem), and apps without a clean Windows XDG story (gh, rstudio) are skipped. Nothing from `home/common/` is linked: it holds `.Rprofile`, `.rsyncignore` and `.tmux.conf`, none of which has an assumable Windows runtime. (`.vimrc` and `.vim/` were listed here and in the script until they turned out to have been dead lines since the neovim switch deleted the files — check `Test-Path` before believing a link list.)
+
+It also links three extension slots — `xdg-config/common/git/config.local`, `xdg-config/common/lazygit/config.local.yml`, `xdg-config/windows/powershell/profile.local.ps1` — which are no-ops for this repo, since it tracks none of them, and only do something for a tree deployed with `-Root`. Without them the slots README documents were Unix-only in practice: the bash deploy walks `xdg-config/` per file and picks them up, while this script links a fixed list. Nothing writes to any of the three, which is what makes linking them into a repo safe, unlike `~/.gitconfig`.
+
+`etc/undeploy.ps1` therefore scans `$PROFILE`'s directory as well as `$HOME` top-level and `$HOME\.config` recursively — `profile.local.ps1` lives beside the profile, outside both other walks.
 
 git is linked because git-for-windows resolves `~/.config/git/config` like every other platform, so the whole tracked config applies — including `core.autocrlf = input`, which overrides Git for Windows' system-level `autocrlf true`. See `git-config.md` for what that costs and the per-machine escape hatch.
 

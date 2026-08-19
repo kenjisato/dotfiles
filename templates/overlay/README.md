@@ -56,6 +56,10 @@ base repo leaves these slots open precisely so you never have to:
 | `~/.config/cdmarks.local.tsv` | `xdg-config/common/cdmarks.local.tsv` |
 | `profile.local.ps1` beside `$PROFILE` | `xdg-config/windows/powershell/profile.local.ps1` |
 
+On Windows, `etc/deploy.ps1 -Root` links the git, lazygit and PowerShell rows.
+The `~/.shell.local/` and `cdmarks` rows are Unix-only — no shell rc is deployed
+on Windows for them to hook into.
+
 Run `bash <base>/etc/overlay-check .` from here to be told about collisions
 instead of discovering them later. It exits non-zero when it finds one, so it
 works as a pre-commit hook in this repo.

@@ -1,6 +1,6 @@
 # etc/undeploy.ps1 — Windows / PowerShell counterpart to etc/undeploy (bash).
 #
-# Removes symlinks at $PROFILE, under $HOME (top-level) and under
+# Removes symlinks at $PROFILE and beside it, under $HOME (top-level) and under
 # $HOME\.config (recursive) whose target resolves into one of the trees it is
 # given (this repo by default; add more with -Also). Regular files are never
 # touched, and symlinks pointing anywhere else (e.g. user-created links into
@@ -42,6 +42,13 @@ Write-Host ""
 
 $script:RemovedCount = 0
 
+# Paths already handled. The walks below overlap by design — $PROFILE is also an
+# entry in its own directory — and without this a dry-run reports such a link
+# twice and inflates the count. (A real run does not, only because the first
+# removal makes the second call's Test-Path fail, which is luck, not a design.)
+$script:Seen = [System.Collections.Generic.HashSet[string]]::new(
+    [StringComparer]::OrdinalIgnoreCase)
+
 function Test-LinkPointsToRepo {
     param([string]$Path)
     $item = Get-Item $Path -Force -ErrorAction SilentlyContinue
@@ -67,6 +74,8 @@ function Test-LinkPointsToRepo {
 function Remove-DotfileLink {
     param([string]$Path)
     if (-not (Test-Path $Path)) { return }
+    # Normalised, so the same link reached through two walks compares equal.
+    if (-not $script:Seen.Add([IO.Path]::GetFullPath($Path))) { return }
     if (-not (Test-LinkPointsToRepo $Path)) { return }
 
     $item = Get-Item $Path -Force
@@ -86,8 +95,25 @@ function Remove-DotfileLink {
     $script:RemovedCount++
 }
 
-# --- $PROFILE (typically under $HOME\Documents\PowerShell\, not top-level) ---
-if ($PROFILE) { Remove-DotfileLink $PROFILE }
+# --- $PROFILE and its directory (typically $HOME\Documents\PowerShell\) ---
+#
+# The directory holds the profile itself plus profile.local.ps1, which the deploy
+# links there when a stacked tree carries one. Scanning the directory covers both
+# without naming either, and Remove-DotfileLink still only touches links that
+# resolve into one of the trees given — a user's own scripts and modules there are
+# left alone. The explicit $PROFILE call is kept for intent; the $script:Seen
+# guard is what keeps it from being counted twice.
+if ($PROFILE) {
+    Remove-DotfileLink $PROFILE
+    $profileDir = Split-Path $PROFILE
+    if ($profileDir -and (Test-Path -LiteralPath $profileDir)) {
+        $profileLinks = @(
+            Get-ChildItem -Path $profileDir -Force -ErrorAction SilentlyContinue |
+                Where-Object { $_.Attributes -band [IO.FileAttributes]::ReparsePoint }
+        )
+        foreach ($link in $profileLinks) { Remove-DotfileLink $link.FullName }
+    }
+}
 
 # --- $HOME top-level (.vimrc, .vim/, plus orphans like .tmux.conf) ---
 Get-ChildItem -Path $HOME -Force | ForEach-Object {
