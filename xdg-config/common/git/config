@@ -16,6 +16,21 @@
 # wins and the file the standard command edits as one and the same, so there is
 # no silent-override trap. etc/install seeds it from `gh api user`.
 
+[init]
+    # GitHub creates repositories with `main`, while git's built-in default is
+    # `master` — and Git for Windows pins that explicitly in its system
+    # gitconfig, so the two disagree on every machine here. Only `git init` and
+    # the clone of an *empty* repository read this; existing checkouts keep
+    # whatever they already have.
+    #
+    # The case it fixes: `gh repo create <repo> --private` with no content flag
+    # makes a repository with no commits, so the clone has no branch to track
+    # and its unborn branch takes the name from here. The first push then makes
+    # *that* the repository's default branch, leaving one repo on `master`
+    # among `main` ones. Passing --add-readme avoids the empty clone entirely
+    # and is the better habit; this key is the backstop.
+    defaultBranch = main
+
 [core]
     excludesfile = ~/.config/git/ignore
     # Global gitleaks pre-commit scan. The hook itself is symlinked to
@@ -58,6 +73,20 @@
     colorMoved = default
     # `git difftool` with no -t goes to the difftastic entry below.
     tool = difftastic
+
+[pull]
+    # `git pull` replays local commits on top of the fetched ones instead of
+    # recording a merge. Without this a diverged branch — the normal result of
+    # committing here while another machine pushed — grows a merge commit for
+    # what is really one linear line of work. Git for Windows pins the opposite
+    # (`pull.rebase = false`) in its system gitconfig, so this file has to say
+    # it explicitly rather than rely on the built-in default.
+    #
+    # The trade-off: rebase rewrites the local, unpushed commits, so it needs a
+    # clean working tree — a dirty one stops with "cannot pull with rebase".
+    # Add `rebase.autoStash = true` in config.local on a machine where that is
+    # a nuisance. To merge once anyway: `git pull --no-rebase`.
+    rebase = true
 
 [merge]
     # A conflict is written with the merge base as a third section, which is
